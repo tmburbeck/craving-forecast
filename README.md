@@ -41,7 +41,7 @@ dotnet build src/CravingForecast.Mobile -f net10.0-android    # emulator calls t
 ```
 
 - **iOS** needs a Mac with Xcode, plus an Apple developer account for the HealthKit entitlement.
-- **On a physical phone**, run the API with `dotnet run --urls http://0.0.0.0:5077` and change `ApiConfig.BaseUrl` to your computer's LAN IP.
+- **On a physical Android phone** (USB debugging on), run `adb reverse tcp:5077 tcp:5077` once per connection; the app then reaches the API at `localhost:5077`. The emulator needs no setup.
 
 ## Endpoints
 

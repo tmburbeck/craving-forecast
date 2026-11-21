@@ -48,11 +48,12 @@ public static class MauiProgram
 
 public static class ApiConfig
 {
-    // Android emulators reach the host machine at 10.0.2.2. On a physical phone, use your PC's LAN IP
-    // and run the API with: dotnet run --urls http://0.0.0.0:5077
-    public static string BaseUrl => DeviceInfo.Platform == DevicePlatform.Android
-        ? "http://10.0.2.2:5077/"
-        : "http://localhost:5077/";
+    // Android emulators reach the host machine at 10.0.2.2. A physical Android phone on USB uses localhost,
+    // forwarded to the PC with: adb reverse tcp:5077 tcp:5077
+    public static string BaseUrl =>
+        DeviceInfo.Platform == DevicePlatform.Android && DeviceInfo.DeviceType == DeviceType.Virtual
+            ? "http://10.0.2.2:5077/"
+            : "http://localhost:5077/";
 }
 
 public static class Session
