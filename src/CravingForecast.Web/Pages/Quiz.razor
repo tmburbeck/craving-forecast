@@ -1,0 +1,97 @@
+@page "/quiz"
+@inject Api Api
+@inject AppState State
+@inject NavigationManager Nav
+
+<PageTitle>Quick quiz · Salus</PageTitle>
+@if (_ready)
+{
+    var q = Questions[_step];
+    var last = _step == Questions.Count - 1;
+    <div class="narrow stack" style="--gap:18px">
+        <div class="row" style="--gap:12px">
+            @if (_step > 0) { <button class="btn icon-btn" aria-label="Back" @onclick="() => _step--"><Icon Name="back" Size="18" Stroke="2.2" /></button> }
+            else { <span style="width:44px;flex:none"></span> }
+            <div class="segments" role="progressbar" aria-valuemin="1" aria-valuemax="@Questions.Count" aria-valuenow="@(_step + 1)" aria-label="Quiz progress">
+                @for (var i = 0; i < Questions.Count; i++) { <span class="@(i < _step ? "done" : i == _step ? "on" : "")"></span> }
+            </div>
+        </div>
+        <span class="small muted" style="font-weight:600">Question @(_step + 1) of @Questions.Count · about a minute</span>
+
+        <div class="fill stack" style="--gap:18px">
+            @if (_step == 0) { <p class="body">Nine quick taps match you to a craving archetype, so your forecast works from today.</p> }
+            <h1 class="heading">@q.Text</h1>
+            @if (q.Multi) { <span class="small muted" style="font-weight:600">Pick all that apply</span> }
+            <div class="stack" style="--gap:10px" role="group" aria-label="@q.Text">
+                @foreach (var o in q.Options)
+                {
+                    <button class="option" aria-pressed="@(IsSelected(q, o) ? "true" : "false")" @onclick="() => Pick(q, o)" disabled="@_busy">
+                        <span>@o.Label</span><span class="dot"></span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        @if (_error is not null) { <p class="error" role="alert">@_error</p> }
+        <button class="btn btn-primary" disabled="@(!Answered(q) || _busy)" @onclick="Next">
+            @(last ? (_busy ? "Building your forecast…" : "See my forecast") : "Next")
+        </button>
+    </div>
+}
+
+@code {
+    private static IReadOnlyList<QuizQuestion> Questions => OnboardingQuiz.Questions;
+
+    private readonly Dictionary<string, object> _answers = [];
+    private readonly HashSet<Trigger> _triggers = [];
+    private int _step;
+    private bool _busy;
+    private bool _ready;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var me = State.Me ?? await State.RefreshMeAsync();
+            if (me is null) { Nav.NavigateTo("signin"); return; }
+            if (me.HasProfile) { Nav.NavigateTo("today"); return; }
+            _ready = true;
+        }
+        catch (Exception) { Nav.NavigateTo("signin"); }
+    }
+
+    private bool IsSelected(QuizQuestion q, QuizOption o) =>
+        q.Multi ? _triggers.Contains((Trigger)o.Value) : _answers.TryGetValue(q.Key, out var v) && v.Equals(o.Value);
+
+    private bool Answered(QuizQuestion q) => q.Multi ? _triggers.Count > 0 : _answers.ContainsKey(q.Key);
+
+    private void Pick(QuizQuestion q, QuizOption o)
+    {
+        if (q.Multi)
+        {
+            var t = (Trigger)o.Value;
+            if (!_triggers.Remove(t)) _triggers.Add(t);
+            return;
+        }
+        _answers[q.Key] = o.Value;
+        if (_step < Questions.Count - 1) _step++;
+    }
+
+    private async Task Next()
+    {
+        if (_step < Questions.Count - 1) { _step++; return; }
+        _busy = true;
+        _error = null;
+        try
+        {
+            var res = await Api.CreateProfileAsync(OnboardingQuiz.BuildRequest(_answers, _triggers, TimeZoneInfo.Local.Id));
+            State.Seed(new MeResponse(State.Me?.Email ?? "", true), res.Forecast);
+            await State.LoadAsync();
+            Nav.NavigateTo("today");
+        }
+        catch (SignedOutException) { Nav.NavigateTo("signin"); }
+        catch (Exception) { _error = "Couldn't save your answers. Check your connection and try again."; }
+        finally { _busy = false; }
+    }
+}

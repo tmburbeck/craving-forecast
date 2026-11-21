@@ -41,6 +41,6 @@ public sealed class ForecastService(TimeProvider clock)
     {
         var f = ForecastFor(u, date);
         var next = NudgePlanner.Plan(u.Profile, f).Where(n => n.SendAt > Now).MinBy(n => n.SendAt);
-        return Map.Forecast(f, next);
+        return Map.Forecast(f, next) with { Sleep = u.ContextFor(date)?.Sleep };
     }
 }

@@ -6,6 +6,7 @@ using CravingForecast.Core;
 using CravingForecast.Core.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +36,19 @@ builder.Services.AddIdentityApiEndpoints<AppUser>(o =>
         o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     })
     .AddEntityFrameworkStores<AppDbContext>();
+
+// The web app signs in with a cookie. An API answers "not signed in" with 401/403, never a redirect to a login page.
+builder.Services.ConfigureApplicationCookie(o =>
+{
+    o.Cookie.Name = "salus.auth";
+    o.Cookie.HttpOnly = true;
+    o.Cookie.SameSite = SameSiteMode.Lax;
+    o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    o.ExpireTimeSpan = TimeSpan.FromDays(30);
+    o.SlidingExpiration = true;
+    o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
+    o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
+});
 
 // Tokens are signed with data-protection keys; keeping them in the database means a restart doesn't sign everyone out.
 builder.Services.AddDataProtection().PersistKeysToDbContext<AppDbContext>().SetApplicationName("Salus");
@@ -71,6 +85,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseRateLimiter();
 
+// The Blazor WebAssembly web app's files (compressed, cache-busted and served with ETags).
+app.MapStaticAssets();
+
 var api = app.MapGroup("/api");
 
 // For checking a deployment: answers without touching the database.
@@ -79,7 +96,15 @@ api.MapGet("/health", () => Results.Ok(new { status = "ok", version = typeof(Pro
 api.MapGet("/archetypes", () => ArchetypeCatalog.All.Select(a => new { a.Id, a.Name, a.Description }));
 
 // /api/auth/register, /login, /refresh and the account-management endpoints.
-api.MapGroup("/auth").MapIdentityApi<AppUser>().RequireRateLimiting("auth");
+var auth = api.MapGroup("/auth");
+auth.MapIdentityApi<AppUser>().RequireRateLimiting("auth");
+
+// Ends a web (cookie) session. The apps forget their tokens instead.
+auth.MapPost("/logout", async (SignInManager<AppUser> signIn) =>
+{
+    await signIn.SignOutAsync();
+    return Results.NoContent();
+}).RequireAuthorization();
 
 // Everything about a person lives under /api/me and is always the signed-in user's own data.
 var me = api.MapGroup("/me").RequireAuthorization();
@@ -190,6 +215,10 @@ me.MapGet("/nudges", async (int? days, ClaimsPrincipal user, IUserStore store, F
     await store.GetAsync(UserId(user)) is { } u
         ? Results.Ok(svc.UpcomingNudges(u, days ?? 2).Select(Map.Nudge))
         : Results.NotFound());
+
+// Unknown API paths are a plain 404; every other path belongs to the web app's client-side router.
+app.MapFallback("/api/{**rest}", () => Results.NotFound());
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

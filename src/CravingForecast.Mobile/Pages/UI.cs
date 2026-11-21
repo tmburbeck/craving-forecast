@@ -1,4 +1,5 @@
 using CravingForecast.Core;
+using CravingForecast.Core.Presentation;
 using Microsoft.Maui.Controls.Shapes;
 using ShapePath = Microsoft.Maui.Controls.Shapes.Path;
 
@@ -57,8 +58,7 @@ public static class Icons
 /// <summary>Small helpers so pages read as layout, not property soup.</summary>
 internal static class UI
 {
-    /// <summary>Danger matches the engine's zone threshold, so a red-flagged bar always means a real zone.</summary>
-    public const double WatchThreshold = 0.35;
+    public const double WatchThreshold = Risk.WatchThreshold;
 
     public static string Font(Weight w) => w switch
     {
@@ -217,12 +217,16 @@ internal static class UI
         return g;
     }
 
-    public static Color RiskColor(double risk) =>
-        risk >= ZoneDetector.Threshold ? Theme.Danger : risk >= WatchThreshold ? Theme.Watch : Theme.Calm;
+    public static Color RiskColor(double risk) => Risk.Level(risk) switch
+    {
+        RiskLevel.Danger => Theme.Danger,
+        RiskLevel.Watch => Theme.Watch,
+        _ => Theme.Calm
+    };
 
-    public static string Hour(int h) { h = ((h % 24) + 24) % 24; return $"{(h % 12 == 0 ? 12 : h % 12)} {(h < 12 ? "AM" : "PM")}"; }
+    public static string Hour(int h) => TimeText.Hour(h);
 
-    public static string ShortHour(int h) { h = ((h % 24) + 24) % 24; return $"{(h % 12 == 0 ? 12 : h % 12)}{(h < 12 ? "a" : "p")}"; }
+    public static string ShortHour(int h) => TimeText.ShortHour(h);
 
     public static Task Alert(string title, string message) =>
         Application.Current?.Windows.FirstOrDefault()?.Page?.DisplayAlertAsync(title, message, "OK") ?? Task.CompletedTask;

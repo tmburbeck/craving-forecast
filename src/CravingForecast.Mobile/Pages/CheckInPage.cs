@@ -1,4 +1,5 @@
 using CravingForecast.Core;
+using CravingForecast.Core.Presentation;
 using CravingForecast.Mobile.Services;
 
 namespace CravingForecast.Mobile.Pages;
@@ -6,9 +7,6 @@ namespace CravingForecast.Mobile.Pages;
 /// <summary>The check-in sheet opened from the + button: a 1–10 rating with optional context.</summary>
 public sealed class CheckInPage : ContentPage
 {
-    private static readonly string[] Words =
-        ["Pick a number", "Barely there", "Barely there", "Mild", "Mild", "Noticeable", "Noticeable", "Strong", "Strong", "Very strong", "Hard to ignore"];
-
     private readonly ForecastStore _store;
     private readonly HashSet<Trigger> _tags = [];
     private int _level;
@@ -59,7 +57,7 @@ public sealed class CheckInPage : ContentPage
 
         var levelColor = _level >= 7 ? Theme.DangerText : _level >= 4 ? Theme.WatchText : Theme.GreenText;
         var number = UI.Text(_level > 0 ? _level.ToString() : "–", 72, Weight.ExtraBold, levelColor);
-        var word = UI.Text(Words[_level], 15, Weight.Bold, Theme.Body);
+        var word = UI.Text(CheckInScale.Word(_level), 15, Weight.Bold, Theme.Body);
         number.HorizontalTextAlignment = word.HorizontalTextAlignment = TextAlignment.Center;
 
         var levels = new Grid { ColumnSpacing = 8, RowSpacing = 8 };

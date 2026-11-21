@@ -1,0 +1,156 @@
+@page "/today"
+@layout AppLayout
+@implements IDisposable
+@inject AppState State
+@inject NavigationManager Nav
+
+<PageTitle>Today · Salus</PageTitle>
+@if (State.Forecast is { } f)
+{
+    var o = OutlookBuilder.For(f, DateTime.Now);
+    <div class="today-grid">
+        <div class="col">
+            <div class="row between">
+                <div class="stack" style="--gap:2px">
+                    <span class="small muted" style="font-weight:600">@f.Date.ToDateTime(TimeOnly.MinValue).ToString("dddd") · Day @f.Day</span>
+                    <span class="small muted">@f.Phase</span>
+                </div>
+                @if (f.Sleep is { } sleep)
+                {
+                    <span class="chip"><Icon Name="moon" Size="14" /> @(sleep switch { SleepQuality.Good => "Slept well", SleepQuality.Ok => "Slept okay", _ => "Slept poorly" })</span>
+                }
+            </div>
+
+            <div class="stack" style="--gap:4px">
+                <span class="small @LevelClass(o.Now)" style="font-weight:600;font-size:14px">@o.Status</span>
+                <h1 class="hero">@o.Headline</h1>
+                <p class="body">@o.Detail</p>
+            </div>
+
+            <section class="card" aria-label="Today's craving risk by hour" style="padding:18px 16px 14px">
+                <RiskChart Forecast="f" IsToday="State.IsToday" />
+            </section>
+
+            <section class="stack" style="--gap:10px" aria-labelledby="zones-title">
+                <h2 class="label" id="zones-title">Danger zones today</h2>
+                @if (f.Zones.Count == 0) { <div class="card compact muted">No danger zones forecast today.</div> }
+                @foreach (var z in f.Zones)
+                {
+                    <div class="card compact row">
+                        <span class="zone-mark" aria-hidden="true"></span>
+                        <div class="grow stack" style="--gap:0">
+                            <span style="font-weight:700">@z.Label</span>
+                            <span class="small muted">@TriggerLabels.Of(z.Context)</span>
+                        </div>
+                        <span class="danger-text" style="font-weight:700">@z.Peak.ToString("P0")</span>
+                    </div>
+                }
+            </section>
+        </div>
+
+        <div class="col">
+            @if (State.Notice is { } notice)
+            {
+                <div class="card soft row" role="status" style="color:var(--green-text)">
+                    <Icon Name="check" Size="20" Stroke="2.2" />
+                    <span style="font-weight:600;font-size:14px">@notice</span>
+                </div>
+            }
+
+            @if (State.NeedsSleepTap)
+            {
+                <section class="card wood stack" style="--gap:12px" aria-labelledby="sleep-title">
+                    <div class="stack" style="--gap:4px">
+                        <h2 class="title" id="sleep-title">Good morning. How did you sleep?</h2>
+                        <p class="small body" style="font-size:14px">One tap helps today's forecast.</p>
+                    </div>
+                    <div class="wrap">
+                        <button class="pill" disabled="@_busy" @onclick="() => Run(() => State.SetSleepAsync(SleepQuality.Good))">Well</button>
+                        <button class="pill" disabled="@_busy" @onclick="() => Run(() => State.SetSleepAsync(SleepQuality.Ok))">Okay</button>
+                        <button class="pill" disabled="@_busy" @onclick="() => Run(() => State.SetSleepAsync(SleepQuality.Poor))">Poorly</button>
+                    </div>
+                </section>
+            }
+
+            @if (State.Pending.FirstOrDefault() is { } p)
+            {
+                <section class="card wood stack" style="--gap:12px" aria-labelledby="fb-title">
+                    <div class="stack" style="--gap:4px">
+                        <h2 class="title" id="fb-title">Was this accurate?</h2>
+                        <p class="body" style="font-size:14px">@TriggerLabels.FeedbackPrompt(p)</p>
+                    </div>
+                    <div class="wrap">
+                        <button class="pill" disabled="@_busy" @onclick="() => Feedback(p, FeedbackVerdict.Accurate, null)">Yes, it hit</button>
+                        <button class="pill" disabled="@_busy" @onclick="() => Feedback(p, FeedbackVerdict.Missed, null)">I was fine</button>
+                        <button class="pill" aria-pressed="@(_pickingHour ? "true" : "false")" disabled="@_busy" @onclick="() => _pickingHour = !_pickingHour">Different time</button>
+                    </div>
+                    @if (_pickingHour)
+                    {
+                        <span class="small muted" style="font-weight:600">When did it hit?</span>
+                        <div class="wrap">
+                            @for (var h = 6; h < 24; h++)
+                            {
+                                var hour = h;
+                                <button class="pill" disabled="@_busy" @onclick="() => Feedback(p, FeedbackVerdict.DifferentTime, hour)">@TimeText.Hour(hour)</button>
+                            }
+                        </div>
+                    }
+                    <p class="tiny muted">A missed prediction teaches the forecast more than a regular check-in.</p>
+                </section>
+            }
+
+            @if (f.NextNudge is { } n)
+            {
+                <section class="card forest stack" style="--gap:12px" aria-labelledby="nudge-title">
+                    <div class="row" style="--gap:10px">
+                        <span class="tile" style="width:36px;height:36px;border-radius:12px;background:var(--forest-icon);color:#fff"><Icon Name="bell" Size="18" /></span>
+                        <div class="stack" style="--gap:0">
+                            <span class="tiny" style="color:var(--on-forest-muted)">Heads-up · @TimeText.Clock(n.SendAt)</span>
+                            <h2 class="title" id="nudge-title">@TriggerLabels.Of(n.Zone.Context), @n.Zone.Label</h2>
+                        </div>
+                    </div>
+                    <p style="font-size:14px;color:var(--on-forest-body)">@n.Body</p>
+                    @foreach (var tip in n.Tips) { <div class="tip" style="font-size:14px">@tip</div> }
+                </section>
+            }
+            else
+            {
+                <section class="card forest stack" style="--gap:6px">
+                    <h2 class="title">No more danger zones today</h2>
+                    <p style="font-size:14px;color:var(--on-forest-body)">Check in any time.</p>
+                </section>
+            }
+
+            <p class="tiny muted center">General patterns, not medical advice.</p>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _busy;
+    private bool _pickingHour;
+
+    protected override void OnInitialized() => State.Changed += OnChanged;
+
+    private static string LevelClass(RiskLevel l) => l switch { RiskLevel.Danger => "danger-text", RiskLevel.Watch => "watch-text", _ => "calm-text" };
+
+    private Task Feedback(ZoneDto z, FeedbackVerdict v, int? hour)
+    {
+        _pickingHour = false;
+        return Run(() => State.FeedbackAsync(z, v, hour));
+    }
+
+    private async Task Run(Func<Task> action)
+    {
+        if (_busy) return;
+        _busy = true;
+        try { await action(); }
+        catch (SignedOutException) { State.Reset(); Nav.NavigateTo("signin"); }
+        catch (Exception) { State.Notice = "That didn't go through. Check your connection and try again."; }
+        finally { _busy = false; }
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnChanged;
+}

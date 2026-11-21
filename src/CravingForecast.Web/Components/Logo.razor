@@ -1,0 +1,7 @@
+<span class="tile" style="width:@(Size)px;height:@(Size)px;border-radius:@(Size * 10 / 30)px">
+    <Icon Name="sprout" Size="@(Size * 3 / 5)" Stroke="@(Size >= 60 ? "1.6" : "2")" />
+</span>
+
+@code {
+    [Parameter] public int Size { get; set; } = 30;
+}

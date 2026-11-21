@@ -1,0 +1,27 @@
+@page "/"
+@inject AppState State
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@* Sends each person to the right place: today, the quiz, sign-in, or the welcome slides on a first visit. *@
+<PageTitle>Salus</PageTitle>
+<div class="splash" role="status" aria-label="Loading Salus">
+    <div class="logo"><Icon Name="sprout" Size="54" Stroke="1.6" /></div>
+    <div class="words"><span class="name">Salus</span><span class="body">Know your cravings before they arrive.</span></div>
+    <div class="loader" aria-hidden="true"></div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var me = await State.RefreshMeAsync();
+            if (me is not null) { Nav.NavigateTo(me.HasProfile ? "today" : "quiz", replace: true); return; }
+        }
+        catch (Exception) { /* offline or the server is waking up: the next screen will retry */ }
+
+        var seen = await JS.InvokeAsync<string?>("localStorage.getItem", "salus.seenWelcome");
+        Nav.NavigateTo(seen is null ? "welcome" : "signin", replace: true);
+    }
+}

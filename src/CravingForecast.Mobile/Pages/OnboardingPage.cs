@@ -1,5 +1,6 @@
 using CravingForecast.Core;
 using CravingForecast.Core.Contracts;
+using CravingForecast.Core.Presentation;
 using CravingForecast.Mobile.Services;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -8,27 +9,14 @@ namespace CravingForecast.Mobile.Pages;
 /// <summary>Layer 1: the ~60 second quiz that picks the user's archetypes.</summary>
 public sealed class OnboardingPage : ContentPage
 {
-    private sealed record Question(string Key, string Text, (object Value, string Label)[] Options, bool Multi = false);
-
-    private static readonly Question[] Quiz =
-    [
-        new("wake", "When do you usually wake up?", [(5, "5 AM"), (6, "6 AM"), (7, "7 AM"), (8, "8 AM"), (9, "9 AM or later")]),
-        new("bed", "When do you usually go to bed?", [(21, "9 PM"), (22, "10 PM"), (23, "11 PM"), (0, "Midnight"), (1, "1 AM or later")]),
-        new("sched", "What is your typical work schedule?", [(WorkSchedule.Office, "9–5, on-site"), (WorkSchedule.Early, "Early shift, done by 3"), (WorkSchedule.Evening, "Evening or night shift"), (WorkSchedule.Remote, "Remote or flexible"), (WorkSchedule.Rotating, "Rotating or irregular")]),
-        new("meal", "When do you usually eat your largest meal?", [(MealTime.Breakfast, "Breakfast"), (MealTime.Lunch, "Lunch"), (MealTime.Dinner, "Dinner"), (MealTime.Late, "Late at night")]),
-        new("graze", "Do you tend to graze? What drives it?", [(GrazeDriver.Boredom, "Boredom"), (GrazeDriver.Stress, "Stress"), (GrazeDriver.Fatigue, "Late-night fatigue"), (GrazeDriver.None, "I don't really graze")]),
-        new("skip", "Which meal do you skip most often?", [(SkippedMeal.Breakfast, "Breakfast"), (SkippedMeal.Lunch, "Lunch"), (SkippedMeal.None, "I rarely skip")]),
-        new("triggers", "When do cravings usually get you?", Labels.Triggers.Select(t => ((object)t.Key, t.Value)).ToArray(), Multi: true),
-        new("type", "What do you usually reach for?", [(CravingType.Sweet, "Sweet"), (CravingType.Salty, "Salty or crunchy"), (CravingType.Both, "Anything, honestly")]),
-        new("style", "What helps you more in the moment?", [(NudgeStyle.Snack, "A better snack ready to go"), (NudgeStyle.Distract, "A quick distraction"), (NudgeStyle.Mix, "A mix of both")])
-    ];
-
     private readonly ApiClient _api;
     private readonly ForecastStore _store;
     private readonly Dictionary<string, object> _answers = [];
     private readonly HashSet<Trigger> _triggers = [];
     private int _step;
     private bool _busy;
+
+    private static IReadOnlyList<QuizQuestion> Quiz => OnboardingQuiz.Questions;
 
     public OnboardingPage(ApiClient api, ForecastStore store)
     {
@@ -49,11 +37,11 @@ public sealed class OnboardingPage : ContentPage
     {
         var q = Quiz[_step];
         bool answered = q.Multi ? _triggers.Count > 0 : _answers.ContainsKey(q.Key);
-        bool last = _step == Quiz.Length - 1;
+        bool last = _step == Quiz.Count - 1;
 
         // Back button + one segment per question
         var segments = new Grid { ColumnSpacing = 4, VerticalOptions = LayoutOptions.Center };
-        for (var i = 0; i < Quiz.Length; i++)
+        for (var i = 0; i < Quiz.Count; i++)
         {
             segments.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
             segments.Add(new BoxView { HeightRequest = 6, CornerRadius = 3, Color = i < _step ? Theme.Forest : i == _step ? Theme.Green : Theme.Track }, i);
@@ -63,7 +51,7 @@ public sealed class OnboardingPage : ContentPage
         bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
         if (_step > 0) bar.Add(UI.IconButton(Icons.Back, "Back", () => { _step--; Render(); }), 0);
         bar.Add(segments, 1);
-        SemanticProperties.SetDescription(segments, $"Question {_step + 1} of {Quiz.Length}");
+        SemanticProperties.SetDescription(segments, $"Question {_step + 1} of {Quiz.Count}");
 
         var body = UI.Stack(18);
         if (_step == 0)
@@ -80,7 +68,7 @@ public sealed class OnboardingPage : ContentPage
         grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         grid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
         grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-        grid.Add(UI.Stack(14, bar, UI.Text($"Question {_step + 1} of {Quiz.Length} · about a minute", 13, Weight.SemiBold, Theme.Muted))
+        grid.Add(UI.Stack(14, bar, UI.Text($"Question {_step + 1} of {Quiz.Count} · about a minute", 13, Weight.SemiBold, Theme.Muted))
             .WithPadding(new Thickness(20, 16, 20, 0)), 0, 0);
         grid.Add(new ScrollView { Content = body.WithPadding(new Thickness(20, 18, 20, 20)) }, 0, 1);
         grid.Add(UI.Footer(action), 0, 2);
@@ -118,10 +106,10 @@ public sealed class OnboardingPage : ContentPage
         return card;
     }
 
-    private bool IsSelected(Question q, object v) =>
+    private bool IsSelected(QuizQuestion q, object v) =>
         q.Multi ? _triggers.Contains((Trigger)v) : _answers.TryGetValue(q.Key, out var cur) && cur.Equals(v);
 
-    private void Pick(Question q, object v)
+    private void Pick(QuizQuestion q, object v)
     {
         if (_busy) return;
         if (q.Multi)
@@ -132,22 +120,19 @@ public sealed class OnboardingPage : ContentPage
         else
         {
             _answers[q.Key] = v;
-            if (_step < Quiz.Length - 1) _step++;
+            if (_step < Quiz.Count - 1) _step++;
         }
         Render();
     }
 
     private async void Next()
     {
-        if (_step < Quiz.Length - 1) { _step++; Render(); return; }
+        if (_step < Quiz.Count - 1) { _step++; Render(); return; }
 
         _busy = true; Render();
         try
         {
-            var req = new OnboardingRequest(
-                (int)_answers["wake"], (int)_answers["bed"], (WorkSchedule)_answers["sched"], (MealTime)_answers["meal"],
-                (GrazeDriver)_answers["graze"], (SkippedMeal)_answers["skip"], [.. _triggers],
-                (CravingType)_answers["type"], (NudgeStyle)_answers["style"], TimeZoneInfo.Local.Id);
+            var req = OnboardingQuiz.BuildRequest(_answers, _triggers, TimeZoneInfo.Local.Id);
             var res = await _api.CreateProfileAsync(req);
             _store.Seed(res.Forecast);
             App.Instance.Show<HomePage>();
@@ -160,17 +145,8 @@ public sealed class OnboardingPage : ContentPage
     }
 }
 
+/// <summary>Kept so existing screens read naturally; the wording lives in Core so every front end shares it.</summary>
 public static class Labels
 {
-    public static readonly Dictionary<Trigger, string> Triggers = new()
-    {
-        [Trigger.Slump] = "Afternoon energy slump",
-        [Trigger.Stress] = "Stressed after work",
-        [Trigger.Tv] = "Watching TV / scrolling",
-        [Trigger.Sleep] = "Slept poorly",
-        [Trigger.Bored] = "Bored at home",
-        [Trigger.Gap] = "Long gap since eating",
-        [Trigger.Social] = "Social / eating out",
-        [Trigger.Late] = "Late night, decision fatigue"
-    };
+    public static IReadOnlyDictionary<Trigger, string> Triggers => TriggerLabels.All;
 }

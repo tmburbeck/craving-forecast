@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CravingForecast.Core\CravingForecast.Core.csproj" />
+    <!-- The web app is served by this API, from the same address. -->
+    <ProjectReference Include="..\CravingForecast.Web\CravingForecast.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
