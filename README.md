@@ -1,6 +1,6 @@
-# Craving Forecast
+# Salus
 
-A satiety and craving pattern predictor. Instead of logging food, users rate their hunger or craving (1–10) and tag the context. The app learns their personal "danger zones" and sends a nudge 30 minutes before each one, matched to the trigger: a high-volume, high-protein snack or a quick distraction.
+A satiety and craving pattern predictor, named for the Roman goddess of health and well-being. (The code still uses the `CravingForecast` working name.) Instead of logging food, users rate their hunger or craving (1–10) and tag the context. The app learns their personal "danger zones" and sends a nudge 30 minutes before each one, matched to the trigger: a high-volume, high-protein snack or a quick distraction.
 
 ## How the prediction works
 
@@ -17,11 +17,14 @@ A satiety and craving pattern predictor. Instead of logging food, users rate the
 ```
 src/CravingForecast.Core     Pure engine: archetypes, context signals, blending, zones, nudges, feedback. No dependencies.
 src/CravingForecast.Api      ASP.NET Core minimal API (JSON-file storage behind IUserStore).
-src/CravingForecast.Mobile   .NET MAUI app (iOS + Android): quiz, check-ins, HealthKit, calendar, scheduled nudges.
+src/CravingForecast.Mobile   .NET MAUI app (iOS + Android): splash, welcome, quiz, Today/Insights tabs, check-ins,
+                             HealthKit, calendar, scheduled nudges.
 tests/CravingForecast.Tests  xUnit tests for the engine and the signal classifiers.
 ```
 
 ## Run it
+
+Requires the .NET 10 SDK (pinned in `global.json`).
 
 ```bash
 dotnet test tests/CravingForecast.Tests
@@ -34,11 +37,11 @@ Then open `CravingForecast.Api.http` in Rider, Visual Studio or VS Code (REST Cl
 
 ```bash
 dotnet workload install maui
-dotnet build src/CravingForecast.Mobile -f net8.0-android    # emulator calls the API at 10.0.2.2:5077
+dotnet build src/CravingForecast.Mobile -f net10.0-android    # emulator calls the API at 10.0.2.2:5077
 ```
 
 - **iOS** needs a Mac with Xcode, plus an Apple developer account for the HealthKit entitlement.
-- **On a physical phone**, run the API with `dotnet run --urls http://0.0.0.0:5077` and change `ApiConfig.BaseUrl` to your computer's LAN IP.
+- **On a physical Android phone** (USB debugging on), run `adb reverse tcp:5077 tcp:5077` once per connection; the app then reaches the API at `localhost:5077`. The emulator needs no setup.
 
 ## Endpoints
 

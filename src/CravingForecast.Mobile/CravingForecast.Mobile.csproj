@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-android;net8.0-ios</TargetFrameworks>
+    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <!-- The iOS workload doesn't exist on Linux; listing it there breaks restore for every target. -->
+    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+    <!-- A Windows build is for previewing the screens on a PC; Health and notifications are off there. -->
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>CravingForecast.Mobile</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -9,13 +13,22 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <ApplicationTitle>Craving Forecast</ApplicationTitle>
+    <ApplicationTitle>Salus</ApplicationTitle>
     <ApplicationId>com.tmburbeck.cravingforecast</ApplicationId>
     <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">26.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <!-- Run as a plain .exe: no MSIX packaging or Developer Mode needed. -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <WindowsPackageType>None</WindowsPackageType>
+    <!-- Bundle the Windows App SDK runtime so the .exe starts without installing it separately. -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
   <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
@@ -24,9 +37,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-    <!-- Floating versions so restore picks the latest compatible release; pin them once it builds. -->
-    <PackageReference Include="Plugin.LocalNotification" Version="11.*" />
-    <PackageReference Include="Plugin.Maui.CalendarStore" Version="*" />
+    <!-- Pinned to exact versions so builds are reproducible. -->
+    <PackageReference Include="Plugin.LocalNotification" Version="14.1.2" />
+    <PackageReference Include="Plugin.Maui.CalendarStore" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#3F6B4E" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#E9DCC6" BaseSize="128,128" />
+    <MauiFont Include="Resources\Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>

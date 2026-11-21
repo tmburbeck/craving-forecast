@@ -8,11 +8,11 @@
   <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
 
   <key>NSHealthShareUsageDescription</key>
-  <string>Craving Forecast reads last night's sleep and yesterday's steps to flag higher-risk craving days. It never writes to Health.</string>
+  <string>Salus reads last night's sleep and yesterday's steps to flag higher-risk craving days. It never writes to Health.</string>
   <key>NSCalendarsUsageDescription</key>
-  <string>Craving Forecast checks for back-to-back meetings, which raise stress and evening cravings. Event details never leave your phone.</string>
+  <string>Salus checks for back-to-back meetings, which raise stress and evening cravings. Event details never leave your phone.</string>
   <key>NSCalendarsFullAccessUsageDescription</key>
-  <string>Craving Forecast checks for back-to-back meetings, which raise stress and evening cravings. Event details never leave your phone.</string>
+  <string>Salus checks for back-to-back meetings, which raise stress and evening cravings. Event details never leave your phone.</string>
 
   <!-- Dev only: allow http://localhost:5077 -->
   <key>NSAppTransportSecurity</key>

@@ -1,5 +1,6 @@
 using CravingForecast.Core.Contracts;
 using Plugin.LocalNotification;
+using Plugin.LocalNotification.Core.Models;
 
 namespace CravingForecast.Mobile.Services;
 
@@ -13,8 +14,13 @@ public sealed class NudgeScheduler
 
     public async Task<bool> EnsurePermissionAsync()
     {
+#if WINDOWS
+        // The Windows build is a screen preview; it doesn't schedule notifications.
+        return await Task.FromResult(false);
+#else
         if (await LocalNotificationCenter.Current.AreNotificationsEnabled()) return true;
         return await LocalNotificationCenter.Current.RequestNotificationPermission();
+#endif
     }
 
     public async Task RescheduleAsync(IReadOnlyList<NudgeDto> nudges)

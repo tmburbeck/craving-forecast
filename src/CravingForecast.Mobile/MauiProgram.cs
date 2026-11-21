@@ -12,7 +12,17 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>().UseLocalNotification();
+        builder.UseMauiApp<App>()
+#if !WINDOWS
+            .UseLocalNotification()
+#endif
+            .ConfigureFonts(fonts =>
+        {
+            fonts.AddFont("PlusJakartaSans-Regular.ttf", "Jakarta");
+            fonts.AddFont("PlusJakartaSans-SemiBold.ttf", "JakartaSemiBold");
+            fonts.AddFont("PlusJakartaSans-Bold.ttf", "JakartaBold");
+            fonts.AddFont("PlusJakartaSans-ExtraBold.ttf", "JakartaExtraBold");
+        });
 
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         json.Converters.Add(new JsonStringEnumConverter());
@@ -26,23 +36,30 @@ public static class MauiProgram
         builder.Services.AddSingleton<IHealthSignals, CravingForecast.Mobile.Health.HealthKitSignals>();
 #elif ANDROID
         builder.Services.AddSingleton<IHealthSignals, CravingForecast.Mobile.Health.HealthConnectSignals>();
+#else
+        builder.Services.AddSingleton<IHealthSignals, NoHealthSignals>();
 #endif
         builder.Services.AddSingleton<NudgeScheduler>();
         builder.Services.AddSingleton<MorningSync>();
+        builder.Services.AddSingleton<ForecastStore>();
 
+        builder.Services.AddTransient<SplashPage>();
+        builder.Services.AddTransient<WelcomePage>();
         builder.Services.AddTransient<OnboardingPage>();
-        builder.Services.AddTransient<ForecastPage>();
+        builder.Services.AddTransient<HomePage>();
+        builder.Services.AddTransient<CheckInPage>();
         return builder.Build();
     }
 }
 
 public static class ApiConfig
 {
-    // Android emulators reach the host machine at 10.0.2.2. On a physical phone, use your PC's LAN IP
-    // and run the API with: dotnet run --urls http://0.0.0.0:5077
-    public static string BaseUrl => DeviceInfo.Platform == DevicePlatform.Android
-        ? "http://10.0.2.2:5077/"
-        : "http://localhost:5077/";
+    // Android emulators reach the host machine at 10.0.2.2. A physical Android phone on USB uses localhost,
+    // forwarded to the PC with: adb reverse tcp:5077 tcp:5077
+    public static string BaseUrl =>
+        DeviceInfo.Platform == DevicePlatform.Android && DeviceInfo.DeviceType == DeviceType.Virtual
+            ? "http://10.0.2.2:5077/"
+            : "http://localhost:5077/";
 }
 
 public static class Session

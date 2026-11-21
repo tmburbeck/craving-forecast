@@ -9,22 +9,25 @@ public class App : Application
     public App(IServiceProvider services)
     {
         _services = services;
-        MainPage = Session.UserId is null ? Wrap<OnboardingPage>() : Wrap<ForecastPage>();
+        UserAppTheme = AppTheme.Light; // the wood-and-green palette is designed for light mode
+        Resources = UI.Styles();
     }
 
-    public void ShowForecast() => MainPage = Wrap<ForecastPage>();
+    public static App Instance => (App)Current!;
 
-    private NavigationPage Wrap<T>() where T : Page => new(_services.GetRequiredService<T>())
+    protected override Window CreateWindow(IActivationState? activationState)
     {
-        BarBackgroundColor = Theme.Tomato,
-        BarTextColor = Colors.White
-    };
-}
+        var window = new Window(_services.GetRequiredService<SplashPage>());
+#if WINDOWS
+        // Phone-shaped window for previewing on a PC.
+        window.Width = 420;
+        window.Height = 880;
+#endif
+        return window;
+    }
 
-public static class Theme
-{
-    public static readonly Color Tomato = Color.FromArgb("#E8472B");
-    public static readonly Color Apricot = Color.FromArgb("#FFD2B5");
-    public static readonly Color Soft = Color.FromArgb("#FFF1E7");
-    public static readonly Color Muted = Color.FromArgb("#6F625C");
+    /// <summary>Replaces the whole screen: splash → welcome → quiz → home are one-way steps, not a back stack.</summary>
+    public void Show<T>() where T : Page => Windows[0].Page = _services.GetRequiredService<T>();
+
+    public T Create<T>() where T : notnull => _services.GetRequiredService<T>();
 }
