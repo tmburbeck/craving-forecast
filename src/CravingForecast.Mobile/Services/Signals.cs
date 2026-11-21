@@ -28,6 +28,6 @@ public sealed class CalendarSignals(ICalendarStore store) : ICalendarSignals
 
         var start = new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue));
         var events = await store.GetEvents(startDate: start, endDate: start.AddDays(1));
-        return SignalClassifier.IsBackToBack(events.Where(e => !e.AllDay).Select(e => (e.StartDate, e.EndDate)));
+        return SignalClassifier.IsBackToBack(events.Where(e => !e.IsAllDay).Select(e => (e.StartDate, e.EndDate)));
     }
 }
