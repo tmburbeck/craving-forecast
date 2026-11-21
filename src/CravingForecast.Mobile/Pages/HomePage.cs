@@ -15,11 +15,11 @@ public sealed class HomePage : ContentPage
     private readonly TabButton _insightsTab;
     private bool _showingInsights;
 
-    public HomePage(ForecastStore store)
+    public HomePage(ForecastStore store, AuthService auth, NudgeScheduler nudges)
     {
         _store = store;
         _today = new TodayView(store);
-        _insights = new InsightsView(store);
+        _insights = new InsightsView(store, auth, nudges);
         _todayTab = new TabButton(Icons.Chart, "Today", () => Select(false));
         _insightsTab = new TabButton(Icons.Clock, "Insights", () => Select(true));
 

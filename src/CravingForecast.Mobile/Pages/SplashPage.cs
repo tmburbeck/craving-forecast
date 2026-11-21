@@ -12,6 +12,8 @@ public sealed class SplashPage : ContentPage
     private static readonly TimeSpan MinimumOnScreen = TimeSpan.FromSeconds(2.6);
 
     private readonly ForecastStore _store;
+    private readonly AuthService _auth;
+    private readonly ApiClient _api;
     private readonly Border _logo;
     private readonly VerticalStackLayout _words;
     private readonly Label _greeting = UI.Text("", 17, Weight.SemiBold, Theme.GreenText);
@@ -21,9 +23,11 @@ public sealed class SplashPage : ContentPage
     private readonly Grid _root;
     private bool _running;
 
-    public SplashPage(ForecastStore store)
+    public SplashPage(ForecastStore store, AuthService auth, ApiClient api)
     {
         _store = store;
+        _auth = auth;
+        _api = api;
         BackgroundColor = Theme.Oak;
 
         _logo = UI.Tile(Icons.Sprout, Theme.Green, Theme.Ground, 104, 32, 54, 1.6);
@@ -73,8 +77,9 @@ public sealed class SplashPage : ContentPage
         base.OnAppearing();
         if (_running) return;
         _running = true;
-        _greeting.Text = Session.UserId is null ? "Welcome" : Greeting();
-        _status.Text = Session.UserId is null ? "" : "Getting today's forecast";
+        await _auth.InitializeAsync();
+        _greeting.Text = _auth.IsSignedIn ? Greeting() : "Welcome";
+        _status.Text = _auth.IsSignedIn ? "Getting today's forecast" : "";
         await Task.WhenAll(FadeInAsync(), StartAsync());
     }
 
@@ -93,7 +98,7 @@ public sealed class SplashPage : ContentPage
     private async Task StartAsync()
     {
         var minimum = Task.Delay(MinimumOnScreen);
-        if (Session.UserId is null)
+        if (!_auth.IsSignedIn)
         {
             await minimum;
             await LeaveAsync<WelcomePage>();
@@ -102,8 +107,21 @@ public sealed class SplashPage : ContentPage
 
         try
         {
+            var me = await _api.GetMeAsync();
+            if (!me.HasProfile)
+            {
+                await minimum;
+                await LeaveAsync<OnboardingPage>();
+                return;
+            }
             await Task.WhenAll(_store.LoadAsync(), minimum);
             await LeaveAsync<HomePage>();
+        }
+        catch (Exception) when (!_auth.IsSignedIn)
+        {
+            // The server no longer accepts the saved sign-in.
+            await minimum;
+            await LeaveAsync<AccountPage>();
         }
         catch (Exception ex)
         {

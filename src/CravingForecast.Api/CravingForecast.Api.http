@@ -1,9 +1,26 @@
-### Craving Forecast API — run with the REST client in Rider, VS or VS Code
+### Salus API — run with the REST client in Rider, VS or VS Code
 @host = http://localhost:5077
-@userId = paste-the-userId-from-the-first-response
+@token = paste-the-accessToken-from-step-2
 
-### 1. Onboarding quiz → archetype match + day-1 forecast
-POST {{host}}/api/users
+### 1. Create an account (password: at least 10 characters)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "you@example.com", "password": "correct horse battery" }
+
+### 2. Sign in → accessToken (1 hour) + refreshToken
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "you@example.com", "password": "correct horse battery" }
+
+### 3. Who am I, and have I done the quiz?
+GET {{host}}/api/me
+Authorization: Bearer {{token}}
+
+### 4. Onboarding quiz → archetype match + day-1 forecast
+POST {{host}}/api/me/profile
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -19,29 +36,41 @@ Content-Type: application/json
   "timeZoneId": "America/Chicago"
 }
 
-### 2. Today's forecast
-GET {{host}}/api/users/{{userId}}/forecast
+### 5. Today's forecast
+GET {{host}}/api/me/forecast
+Authorization: Bearer {{token}}
 
-### 3. Morning sync: sleep (tap or HealthKit) + calendar
-PUT {{host}}/api/users/{{userId}}/context/2026-11-20
+### 6. Morning sync: sleep (tap or HealthKit) + calendar
+PUT {{host}}/api/me/context/2026-11-20
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "sleep": "Poor", "backToBackMeetings": true, "activity": "Low" }
 
-### 4. Check in
-POST {{host}}/api/users/{{userId}}/checkins
+### 7. Check in
+POST {{host}}/api/me/checkins
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "level": 8, "context": ["Late", "Tv"] }
 
-### 5. Zones waiting for "Was this accurate?"
-GET {{host}}/api/users/{{userId}}/feedback/pending
+### 8. Zones waiting for "Was this accurate?"
+GET {{host}}/api/me/feedback/pending
+Authorization: Bearer {{token}}
 
-### 6. Answer it (Accurate | Missed | DifferentTime + actualHour)
-POST {{host}}/api/users/{{userId}}/feedback
+### 9. Answer it (Accurate | Missed | DifferentTime + actualHour)
+POST {{host}}/api/me/feedback
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 { "date": "2026-11-20", "zoneStartHour": 17, "verdict": "DifferentTime", "actualHour": 20 }
 
-### 7. Nudges for the phone to schedule (today + tomorrow)
-GET {{host}}/api/users/{{userId}}/nudges?days=2
+### 10. Nudges for the phone to schedule (today + tomorrow)
+GET {{host}}/api/me/nudges?days=2
+Authorization: Bearer {{token}}
+
+### 11. Renew an expired access token
+POST {{host}}/api/auth/refresh
+Content-Type: application/json
+
+{ "refreshToken": "paste-the-refreshToken-from-step-2" }

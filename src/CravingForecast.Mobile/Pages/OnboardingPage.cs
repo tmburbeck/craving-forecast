@@ -148,14 +148,13 @@ public sealed class OnboardingPage : ContentPage
                 (int)_answers["wake"], (int)_answers["bed"], (WorkSchedule)_answers["sched"], (MealTime)_answers["meal"],
                 (GrazeDriver)_answers["graze"], (SkippedMeal)_answers["skip"], [.. _triggers],
                 (CravingType)_answers["type"], (NudgeStyle)_answers["style"], TimeZoneInfo.Local.Id);
-            var res = await _api.CreateUserAsync(req);
-            Session.UserId = res.UserId;
+            var res = await _api.CreateProfileAsync(req);
             _store.Seed(res.Forecast);
             App.Instance.Show<HomePage>();
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Couldn't reach the server", $"Is the API running at {ApiConfig.BaseUrl}?\n\n{ex.Message}", "OK");
+            await DisplayAlertAsync("Couldn't save your answers", $"Check your connection and try again.\n\n{ex.Message}", "OK");
             _busy = false; Render();
         }
     }

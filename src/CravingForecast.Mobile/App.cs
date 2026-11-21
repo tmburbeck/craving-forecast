@@ -1,4 +1,5 @@
 using CravingForecast.Mobile.Pages;
+using CravingForecast.Mobile.Services;
 
 namespace CravingForecast.Mobile;
 
@@ -11,6 +12,14 @@ public class App : Application
         _services = services;
         UserAppTheme = AppTheme.Light; // the wood-and-green palette is designed for light mode
         Resources = UI.Styles();
+
+        // Signed out, by choice or because the server stopped accepting the session: back to the sign-in screen.
+        services.GetRequiredService<AuthService>().SignedOut += () => MainThread.BeginInvokeOnMainThread(() =>
+        {
+            services.GetRequiredService<ForecastStore>().Reset();
+            if (Windows.Count == 0 || Windows[0].Page is SplashPage or AccountPage) return;
+            Windows[0].Page = services.GetRequiredService<AccountPage>();
+        });
     }
 
     public static App Instance => (App)Current!;

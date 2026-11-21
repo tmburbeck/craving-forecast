@@ -27,7 +27,12 @@ public static class MauiProgram
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         json.Converters.Add(new JsonStringEnumConverter());
         builder.Services.AddSingleton(json);
-        builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(ApiConfig.BaseUrl), Timeout = TimeSpan.FromSeconds(15) });
+        builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton(sp => new HttpClient(new AuthHandler(sp.GetRequiredService<AuthService>()))
+        {
+            BaseAddress = new Uri(ApiConfig.BaseUrl),
+            Timeout = TimeSpan.FromSeconds(15)
+        });
         builder.Services.AddSingleton<ApiClient>();
 
         builder.Services.AddSingleton(CalendarStore.Default);
@@ -45,6 +50,7 @@ public static class MauiProgram
 
         builder.Services.AddTransient<SplashPage>();
         builder.Services.AddTransient<WelcomePage>();
+        builder.Services.AddTransient<AccountPage>();
         builder.Services.AddTransient<OnboardingPage>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<CheckInPage>();
@@ -64,12 +70,6 @@ public static class ApiConfig
 
 public static class Session
 {
-    public static Guid? UserId
-    {
-        get => Guid.TryParse(Preferences.Get("userId", ""), out var id) ? id : null;
-        set => Preferences.Set("userId", value?.ToString() ?? "");
-    }
-
     public static DateOnly? LastSync
     {
         get => DateOnly.TryParse(Preferences.Get("lastSync", ""), out var d) ? d : null;

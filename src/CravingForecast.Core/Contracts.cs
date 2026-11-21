@@ -47,3 +47,12 @@ public sealed record ForecastDto(
     NudgeDto? NextNudge);
 
 public sealed record OnboardingResponse(Guid UserId, ForecastDto Forecast);
+
+/// <summary>Who is signed in, and whether they've done the onboarding quiz yet.</summary>
+public sealed record MeResponse(string Email, bool HasProfile);
+
+// ---------- Accounts (ASP.NET Core Identity endpoints under /api/auth) ----------
+
+public sealed record AuthRequest(string Email, string Password);
+public sealed record RefreshRequest(string RefreshToken);
+public sealed record TokenResponse(string TokenType, string AccessToken, long ExpiresIn, string RefreshToken);
