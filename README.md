@@ -43,7 +43,7 @@ dotnet build src/CravingForecast.Mobile -f net10.0-android    # emulator calls t
 ```
 
 - **iOS** needs a Mac with Xcode, plus an Apple developer account for the HealthKit entitlement.
-- **On a physical Android phone** (USB debugging on), run `adb reverse tcp:5077 tcp:5077` once per connection; the app then reaches the API at `localhost:5077`. The emulator needs no setup.
+- **The app talks to the hosted API** on Azure by default. To use an API running on your own computer instead, set `SALUS_API_URL` before starting the app (PowerShell: `$env:SALUS_API_URL = "http://localhost:5077/"`). An Android emulator reaches your computer at `http://10.0.2.2:5077/`; a USB phone uses `http://localhost:5077/` after `adb reverse tcp:5077 tcp:5077`.
 
 ## Endpoints
 
@@ -74,7 +74,7 @@ Everything under `/api/me` needs `Authorization: Bearer <accessToken>` and only 
 ## Next steps
 
 - [x] EF Core persistence + accounts
-- [ ] Hosting (Azure App Service) with HTTPS
+- [x] Hosting (Azure App Service, free tier) with HTTPS, deployed from CI on every push to `main`
 - [ ] Health Connect implementation
 - [ ] Weekday vs weekend personal patterns (personal estimates are currently by hour of day only)
 - [ ] Tune context factors per user the same way rule trust is tuned

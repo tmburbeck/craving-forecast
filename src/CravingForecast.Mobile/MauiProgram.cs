@@ -60,12 +60,17 @@ public static class MauiProgram
 
 public static class ApiConfig
 {
-    // Android emulators reach the host machine at 10.0.2.2. A physical Android phone on USB uses localhost,
-    // forwarded to the PC with: adb reverse tcp:5077 tcp:5077
-    public static string BaseUrl =>
-        DeviceInfo.Platform == DevicePlatform.Android && DeviceInfo.DeviceType == DeviceType.Virtual
-            ? "http://10.0.2.2:5077/"
-            : "http://localhost:5077/";
+    /// <summary>The hosted API on Azure App Service.</summary>
+    public const string Hosted = "https://salus-tmburbeck-bafcfcg0exfpduh6.westus3-01.azurewebsites.net/";
+
+    /// <summary>
+    /// The hosted API, unless SALUS_API_URL is set (for example http://localhost:5077/ to work against an API
+    /// running on this PC). Android emulators reach the PC at http://10.0.2.2:5077/; a USB phone uses
+    /// http://localhost:5077/ after: adb reverse tcp:5077 tcp:5077
+    /// </summary>
+    public static string BaseUrl { get; } = WithSlash(Environment.GetEnvironmentVariable("SALUS_API_URL") ?? Hosted);
+
+    private static string WithSlash(string url) => url.EndsWith('/') ? url : url + "/";
 }
 
 public static class Session
