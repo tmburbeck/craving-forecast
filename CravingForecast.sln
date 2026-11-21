@@ -1,0 +1,50 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{500E39C0-604A-46E5-9EF8-26398C95CC9C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CravingForecast.Core", "src\CravingForecast.Core\CravingForecast.Core.csproj", "{81A05E87-33A1-4B10-A486-BF4B4F14008D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CravingForecast.Api", "src\CravingForecast.Api\CravingForecast.Api.csproj", "{C55BB761-6481-4D67-9CA5-16F66346ED9C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{88EE87EE-4583-479F-877A-7E2C36CF0A3B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CravingForecast.Tests", "tests\CravingForecast.Tests\CravingForecast.Tests.csproj", "{A2966B50-D243-4FA4-91C5-1A29B1EFC11B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CravingForecast.Mobile", "src\CravingForecast.Mobile\CravingForecast.Mobile.csproj", "{C016936D-554E-4CE0-8CB4-47665870FC2C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{81A05E87-33A1-4B10-A486-BF4B4F14008D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81A05E87-33A1-4B10-A486-BF4B4F14008D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81A05E87-33A1-4B10-A486-BF4B4F14008D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81A05E87-33A1-4B10-A486-BF4B4F14008D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C55BB761-6481-4D67-9CA5-16F66346ED9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C55BB761-6481-4D67-9CA5-16F66346ED9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C55BB761-6481-4D67-9CA5-16F66346ED9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C55BB761-6481-4D67-9CA5-16F66346ED9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2966B50-D243-4FA4-91C5-1A29B1EFC11B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2966B50-D243-4FA4-91C5-1A29B1EFC11B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2966B50-D243-4FA4-91C5-1A29B1EFC11B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2966B50-D243-4FA4-91C5-1A29B1EFC11B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C016936D-554E-4CE0-8CB4-47665870FC2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C016936D-554E-4CE0-8CB4-47665870FC2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C016936D-554E-4CE0-8CB4-47665870FC2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C016936D-554E-4CE0-8CB4-47665870FC2C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{81A05E87-33A1-4B10-A486-BF4B4F14008D} = {500E39C0-604A-46E5-9EF8-26398C95CC9C}
+		{C55BB761-6481-4D67-9CA5-16F66346ED9C} = {500E39C0-604A-46E5-9EF8-26398C95CC9C}
+		{A2966B50-D243-4FA4-91C5-1A29B1EFC11B} = {88EE87EE-4583-479F-877A-7E2C36CF0A3B}
+		{C016936D-554E-4CE0-8CB4-47665870FC2C} = {500E39C0-604A-46E5-9EF8-26398C95CC9C}
+	EndGlobalSection
+EndGlobal

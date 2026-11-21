@@ -1,0 +1,47 @@
+### Craving Forecast API — run with the REST client in Rider, VS or VS Code
+@host = http://localhost:5077
+@userId = paste-the-userId-from-the-first-response
+
+### 1. Onboarding quiz → archetype match + day-1 forecast
+POST {{host}}/api/users
+Content-Type: application/json
+
+{
+  "wakeHour": 7,
+  "bedHour": 23,
+  "schedule": "Office",
+  "largestMeal": "Dinner",
+  "graze": "Fatigue",
+  "skip": "Breakfast",
+  "triggers": ["Late", "Stress", "Tv"],
+  "cravingType": "Sweet",
+  "nudgeStyle": "Mix",
+  "timeZoneId": "America/Chicago"
+}
+
+### 2. Today's forecast
+GET {{host}}/api/users/{{userId}}/forecast
+
+### 3. Morning sync: sleep (tap or HealthKit) + calendar
+PUT {{host}}/api/users/{{userId}}/context/2026-11-20
+Content-Type: application/json
+
+{ "sleep": "Poor", "backToBackMeetings": true, "activity": "Low" }
+
+### 4. Check in
+POST {{host}}/api/users/{{userId}}/checkins
+Content-Type: application/json
+
+{ "level": 8, "context": ["Late", "Tv"] }
+
+### 5. Zones waiting for "Was this accurate?"
+GET {{host}}/api/users/{{userId}}/feedback/pending
+
+### 6. Answer it (Accurate | Missed | DifferentTime + actualHour)
+POST {{host}}/api/users/{{userId}}/feedback
+Content-Type: application/json
+
+{ "date": "2026-11-20", "zoneStartHour": 17, "verdict": "DifferentTime", "actualHour": 20 }
+
+### 7. Nudges for the phone to schedule (today + tomorrow)
+GET {{host}}/api/users/{{userId}}/nudges?days=2
