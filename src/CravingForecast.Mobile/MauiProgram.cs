@@ -12,7 +12,13 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>().UseLocalNotification();
+        builder.UseMauiApp<App>().UseLocalNotification().ConfigureFonts(fonts =>
+        {
+            fonts.AddFont("PlusJakartaSans-Regular.ttf", "Jakarta");
+            fonts.AddFont("PlusJakartaSans-SemiBold.ttf", "JakartaSemiBold");
+            fonts.AddFont("PlusJakartaSans-Bold.ttf", "JakartaBold");
+            fonts.AddFont("PlusJakartaSans-ExtraBold.ttf", "JakartaExtraBold");
+        });
 
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         json.Converters.Add(new JsonStringEnumConverter());
@@ -29,9 +35,13 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<NudgeScheduler>();
         builder.Services.AddSingleton<MorningSync>();
+        builder.Services.AddSingleton<ForecastStore>();
 
+        builder.Services.AddTransient<SplashPage>();
+        builder.Services.AddTransient<WelcomePage>();
         builder.Services.AddTransient<OnboardingPage>();
-        builder.Services.AddTransient<ForecastPage>();
+        builder.Services.AddTransient<HomePage>();
+        builder.Services.AddTransient<CheckInPage>();
         return builder.Build();
     }
 }

@@ -1,6 +1,7 @@
 using CravingForecast.Core;
 using CravingForecast.Core.Contracts;
 using CravingForecast.Mobile.Services;
+using Microsoft.Maui.Controls.Shapes;
 
 namespace CravingForecast.Mobile.Pages;
 
@@ -17,48 +18,104 @@ public sealed class OnboardingPage : ContentPage
         new("meal", "When do you usually eat your largest meal?", [(MealTime.Breakfast, "Breakfast"), (MealTime.Lunch, "Lunch"), (MealTime.Dinner, "Dinner"), (MealTime.Late, "Late at night")]),
         new("graze", "Do you tend to graze? What drives it?", [(GrazeDriver.Boredom, "Boredom"), (GrazeDriver.Stress, "Stress"), (GrazeDriver.Fatigue, "Late-night fatigue"), (GrazeDriver.None, "I don't really graze")]),
         new("skip", "Which meal do you skip most often?", [(SkippedMeal.Breakfast, "Breakfast"), (SkippedMeal.Lunch, "Lunch"), (SkippedMeal.None, "I rarely skip")]),
-        new("triggers", "When do cravings usually get you? Pick all that apply.", Labels.Triggers.Select(t => ((object)t.Key, t.Value)).ToArray(), Multi: true),
+        new("triggers", "When do cravings usually get you?", Labels.Triggers.Select(t => ((object)t.Key, t.Value)).ToArray(), Multi: true),
         new("type", "What do you usually reach for?", [(CravingType.Sweet, "Sweet"), (CravingType.Salty, "Salty or crunchy"), (CravingType.Both, "Anything, honestly")]),
         new("style", "What helps you more in the moment?", [(NudgeStyle.Snack, "A better snack ready to go"), (NudgeStyle.Distract, "A quick distraction"), (NudgeStyle.Mix, "A mix of both")])
     ];
 
     private readonly ApiClient _api;
+    private readonly ForecastStore _store;
     private readonly Dictionary<string, object> _answers = [];
     private readonly HashSet<Trigger> _triggers = [];
     private int _step;
     private bool _busy;
 
-    public OnboardingPage(ApiClient api)
+    public OnboardingPage(ApiClient api, ForecastStore store)
     {
         _api = api;
-        Title = "Craving Forecast";
+        _store = store;
         Render();
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        if (_step == 0) return base.OnBackButtonPressed();
+        _step--;
+        Render();
+        return true;
     }
 
     private void Render()
     {
         var q = Quiz[_step];
         bool answered = q.Multi ? _triggers.Count > 0 : _answers.ContainsKey(q.Key);
+        bool last = _step == Quiz.Length - 1;
 
-        var stack = UI.Stack(
-            UI.P($"Question {_step + 1} of {Quiz.Length} · about a minute", muted: true, size: 13),
-            new ProgressBar { Progress = (double)_step / Quiz.Length, ProgressColor = Theme.Tomato });
-        if (_step == 0)
+        // Back button + one segment per question
+        var segments = new Grid { ColumnSpacing = 4, VerticalOptions = LayoutOptions.Center };
+        for (var i = 0; i < Quiz.Length; i++)
         {
-            stack.Children.Add(UI.Title("Let's find your danger zones."));
-            stack.Children.Add(UI.P("Nine quick taps match you to a craving archetype, so your forecast works today. Your own check-ins take over by day 14.", muted: true));
+            segments.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            segments.Add(new BoxView { HeightRequest = 6, CornerRadius = 3, Color = i < _step ? Theme.Forest : i == _step ? Theme.Green : Theme.Track }, i);
         }
-        stack.Children.Add(new Label { Text = q.Text, FontSize = 20, FontAttributes = FontAttributes.Bold, Margin = new Thickness(0, 16, 0, 8) });
-        stack.Children.Add(UI.Wrap(q.Options.Select(o => (View)UI.Chip(o.Label, IsSelected(q, o.Value), () => Pick(q, o.Value)))));
+        var bar = new Grid { ColumnSpacing = 12 };
+        bar.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(44)));
+        bar.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+        if (_step > 0) bar.Add(UI.IconButton(Icons.Back, "Back", () => { _step--; Render(); }), 0);
+        bar.Add(segments, 1);
+        SemanticProperties.SetDescription(segments, $"Question {_step + 1} of {Quiz.Length}");
 
-        var nav = new Grid { ColumnSpacing = 12, Margin = new Thickness(0, 20, 0, 0) };
-        nav.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-        nav.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
-        if (_step > 0) nav.Add(new Button { Text = "Back", Command = new Command(() => { _step--; Render(); }) }, 0);
-        nav.Add(UI.Primary(_step == Quiz.Length - 1 ? (_busy ? "Building…" : "See my forecast") : "Next", Next, answered && !_busy), 1);
-        stack.Children.Add(nav);
+        var body = UI.Stack(18);
+        if (_step == 0)
+            body.Children.Add(UI.Text("Nine quick taps match you to a craving archetype, so your forecast works from today.", 15, Weight.Regular, Theme.Body));
+        body.Children.Add(UI.Heading(q.Text));
+        if (q.Multi) body.Children.Add(UI.Text("Pick all that apply", 13, Weight.SemiBold, Theme.Muted));
+        var options = UI.Stack(10);
+        foreach (var o in q.Options) options.Children.Add(Option(o.Label, IsSelected(q, o.Value), () => Pick(q, o.Value)));
+        body.Children.Add(options);
 
-        Content = new ScrollView { Content = new VerticalStackLayout { Padding = 20, Children = { stack } } };
+        var action = UI.Primary(last ? (_busy ? "Building your forecast…" : "See my forecast") : "Next", Next, answered && !_busy);
+
+        var grid = new Grid();
+        grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        grid.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+        grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        grid.Add(UI.Stack(14, bar, UI.Text($"Question {_step + 1} of {Quiz.Length} · about a minute", 13, Weight.SemiBold, Theme.Muted))
+            .WithPadding(new Thickness(20, 16, 20, 0)), 0, 0);
+        grid.Add(new ScrollView { Content = body.WithPadding(new Thickness(20, 18, 20, 20)) }, 0, 1);
+        grid.Add(UI.Footer(action), 0, 2);
+        Content = grid;
+    }
+
+    /// <summary>A full-width answer card with a selection dot.</summary>
+    private static View Option(string label, bool selected, Action onTap)
+    {
+        var dot = new Ellipse
+        {
+            WidthRequest = 22, HeightRequest = 22,
+            Stroke = new SolidColorBrush(selected ? Theme.Green : Theme.WoodBorder), StrokeThickness = 2,
+            Fill = new SolidColorBrush(selected ? Theme.Green : Theme.Card),
+            VerticalOptions = LayoutOptions.Center
+        };
+        var row = new Grid { ColumnSpacing = 12 };
+        row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+        row.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        row.Add(UI.Text(label, 16, Weight.SemiBold).Also(l => l.VerticalOptions = LayoutOptions.Center), 0);
+        row.Add(dot, 1);
+
+        var card = new Border
+        {
+            Content = row,
+            MinimumHeightRequest = 56,
+            Padding = new Thickness(18, 12),
+            BackgroundColor = selected ? Theme.GreenSoft : Theme.Card,
+            Stroke = selected ? Theme.Green : Theme.Border,
+            StrokeThickness = 2,
+            StrokeShape = new RoundRectangle { CornerRadius = 16 }
+        };
+        card.GestureRecognizers.Add(new TapGestureRecognizer { Command = new Command(onTap) });
+        SemanticProperties.SetDescription(card, selected ? $"{label}, selected" : label);
+        return card;
     }
 
     private bool IsSelected(Question q, object v) =>
@@ -66,6 +123,7 @@ public sealed class OnboardingPage : ContentPage
 
     private void Pick(Question q, object v)
     {
+        if (_busy) return;
         if (q.Multi)
         {
             var t = (Trigger)v;
@@ -92,7 +150,8 @@ public sealed class OnboardingPage : ContentPage
                 (CravingType)_answers["type"], (NudgeStyle)_answers["style"], TimeZoneInfo.Local.Id);
             var res = await _api.CreateUserAsync(req);
             Session.UserId = res.UserId;
-            ((App)Application.Current!).ShowForecast();
+            _store.Seed(res.Forecast);
+            App.Instance.Show<HomePage>();
         }
         catch (Exception ex)
         {

@@ -1,5 +1,7 @@
 using Android.App;
 using Android.Content.PM;
+using Android.OS;
+using AndroidX.Core.View;
 
 namespace CravingForecast.Mobile;
 
@@ -8,4 +10,14 @@ namespace CravingForecast.Mobile;
                            ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
+    protected override void OnCreate(Bundle? savedInstanceState)
+    {
+        base.OnCreate(savedInstanceState);
+        // The app's backgrounds are light oak, so the status and navigation bar icons need to be dark.
+        if (Window is { } window && WindowCompat.GetInsetsController(window, window.DecorView) is { } bars)
+        {
+            bars.AppearanceLightStatusBars = true;
+            bars.AppearanceLightNavigationBars = true;
+        }
+    }
 }

@@ -1,6 +1,6 @@
-# Craving Forecast
+# Salus
 
-A satiety and craving pattern predictor. Instead of logging food, users rate their hunger or craving (1–10) and tag the context. The app learns their personal "danger zones" and sends a nudge 30 minutes before each one, matched to the trigger: a high-volume, high-protein snack or a quick distraction.
+A satiety and craving pattern predictor, named for the Roman goddess of health and well-being. (The code still uses the `CravingForecast` working name.) Instead of logging food, users rate their hunger or craving (1–10) and tag the context. The app learns their personal "danger zones" and sends a nudge 30 minutes before each one, matched to the trigger: a high-volume, high-protein snack or a quick distraction.
 
 ## How the prediction works
 
@@ -17,7 +17,8 @@ A satiety and craving pattern predictor. Instead of logging food, users rate the
 ```
 src/CravingForecast.Core     Pure engine: archetypes, context signals, blending, zones, nudges, feedback. No dependencies.
 src/CravingForecast.Api      ASP.NET Core minimal API (JSON-file storage behind IUserStore).
-src/CravingForecast.Mobile   .NET MAUI app (iOS + Android): quiz, check-ins, HealthKit, calendar, scheduled nudges.
+src/CravingForecast.Mobile   .NET MAUI app (iOS + Android): splash, welcome, quiz, Today/Insights tabs, check-ins,
+                             HealthKit, calendar, scheduled nudges.
 tests/CravingForecast.Tests  xUnit tests for the engine and the signal classifiers.
 ```
 

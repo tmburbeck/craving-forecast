@@ -11,7 +11,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
-    <ApplicationTitle>Craving Forecast</ApplicationTitle>
+    <ApplicationTitle>Salus</ApplicationTitle>
     <ApplicationId>com.tmburbeck.cravingforecast</ApplicationId>
     <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
@@ -29,6 +29,12 @@
     <!-- Pinned to exact versions so builds are reproducible. -->
     <PackageReference Include="Plugin.LocalNotification" Version="14.1.2" />
     <PackageReference Include="Plugin.Maui.CalendarStore" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#3F6B4E" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#E9DCC6" BaseSize="128,128" />
+    <MauiFont Include="Resources\Fonts\*.ttf" />
   </ItemGroup>
 
   <ItemGroup>
