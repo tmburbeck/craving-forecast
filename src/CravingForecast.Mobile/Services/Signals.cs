@@ -11,6 +11,14 @@ public interface IHealthSignals
     Task<ActivityLevel?> GetYesterdayActivityAsync();
 }
 
+/// <summary>For platforms without a health store (the Windows preview): the app asks the morning sleep question instead.</summary>
+public sealed class NoHealthSignals : IHealthSignals
+{
+    public bool IsAvailable => false;
+    public Task<SleepQuality?> GetLastNightSleepAsync() => Task.FromResult<SleepQuality?>(null);
+    public Task<ActivityLevel?> GetYesterdayActivityAsync() => Task.FromResult<ActivityLevel?>(null);
+}
+
 public interface ICalendarSignals
 {
     /// <summary>Null when calendar permission is denied.</summary>

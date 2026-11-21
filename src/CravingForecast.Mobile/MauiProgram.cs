@@ -12,7 +12,11 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-        builder.UseMauiApp<App>().UseLocalNotification().ConfigureFonts(fonts =>
+        builder.UseMauiApp<App>()
+#if !WINDOWS
+            .UseLocalNotification()
+#endif
+            .ConfigureFonts(fonts =>
         {
             fonts.AddFont("PlusJakartaSans-Regular.ttf", "Jakarta");
             fonts.AddFont("PlusJakartaSans-SemiBold.ttf", "JakartaSemiBold");
@@ -32,6 +36,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IHealthSignals, CravingForecast.Mobile.Health.HealthKitSignals>();
 #elif ANDROID
         builder.Services.AddSingleton<IHealthSignals, CravingForecast.Mobile.Health.HealthConnectSignals>();
+#else
+        builder.Services.AddSingleton<IHealthSignals, NoHealthSignals>();
 #endif
         builder.Services.AddSingleton<NudgeScheduler>();
         builder.Services.AddSingleton<MorningSync>();
