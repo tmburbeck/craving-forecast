@@ -159,6 +159,10 @@ jobs:
           app-name: ${{ vars.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: publish
+          # Replace the site's files instead of adding to them, so files from earlier builds can't linger
+          # (a leftover *.runtimeconfig.json makes App Service start its placeholder site instead of Salus).
+          clean: true
+          restart: true
       - name: Check the live API answers
         run: |
           for i in $(seq 1 12); do
