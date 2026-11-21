@@ -16,12 +16,20 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CravingForecast.Core\CravingForecast.Core.csproj" />
-    <!-- The web app is served by this API, from the same address. -->
-    <ProjectReference Include="..\CravingForecast.Web\CravingForecast.Web.csproj" />
+    <!-- The web app is served by this API, from the same address. Only its files (wwwroot, _framework) are
+         needed, not its assembly: a second *.runtimeconfig.json in the output stops App Service from knowing
+         which program to start, and it falls back to its placeholder site. -->
+    <ProjectReference Include="..\CravingForecast.Web\CravingForecast.Web.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="CravingForecast.Tests" />
   </ItemGroup>
+
+  <!-- App Service starts whichever program has a *.runtimeconfig.json in the output; the web app's copy
+       (which it doesn't use, its settings ship inside _framework) would leave two to choose from. -->
+  <Target Name="RemoveWebAppRuntimeConfig" AfterTargets="Publish">
+    <Delete Files="$(PublishDir)CravingForecast.Web.runtimeconfig.json" />
+  </Target>
 
 </Project>

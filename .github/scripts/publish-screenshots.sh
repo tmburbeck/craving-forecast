@@ -10,6 +10,7 @@ dest="main"; [ -n "${PR:-}" ] && dest="pr-$PR"
 repo="$GITHUB_REPOSITORY"
 url="https://x-access-token:${GH_TOKEN}@github.com/${repo}.git"
 work="$RUNNER_TEMP/screenshots-branch"
+shown="${SHOWN_SHA:-$GITHUB_SHA}"
 
 git config --global user.name "github-actions[bot]"
 git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -47,7 +48,7 @@ marker="<!-- salus-screenshots -->"
 body="$marker
 ### Screens on this pull request
 
-Taken by the web walk-through for ${GITHUB_SHA::7}: sign-up, quiz, check-in and sign-out all passed.
+Taken by the web walk-through for ${shown::7}: sign-up, quiz, check-in and sign-out all passed.
 
 | Phone | iPad | Desktop |
 | --- | --- | --- |
