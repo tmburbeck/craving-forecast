@@ -55,11 +55,26 @@ builder.Services.AddRateLimiter(o =>
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
-    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // SQLite creates the file but not its folder (on Azure: /home/data, which survives restarts and redeploys).
+    if (Path.GetDirectoryName(db.Database.GetDbConnection().DataSource) is { Length: > 0 } folder)
+        Directory.CreateDirectory(folder);
+    await db.Database.MigrateAsync();
+    // EF Core creates SQLite files in WAL mode, which needs shared memory that network storage (Azure's
+    // /home) can't provide reliably. The classic rollback journal is safe there and plenty fast for one server.
+    await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=DELETE;");
+}
+
+if (!app.Environment.IsDevelopment())
+    app.UseHsts(); // browsers then insist on HTTPS for this site
 
 app.UseRateLimiter();
 
 var api = app.MapGroup("/api");
+
+// For checking a deployment: answers without touching the database.
+api.MapGet("/health", () => Results.Ok(new { status = "ok", version = typeof(Program).Assembly.GetName().Version?.ToString() }));
 
 api.MapGet("/archetypes", () => ArchetypeCatalog.All.Select(a => new { a.Id, a.Name, a.Description }));
 
