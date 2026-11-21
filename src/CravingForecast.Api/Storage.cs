@@ -1,6 +1,11 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CravingForecast.Core;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 namespace CravingForecast.Api;
 
@@ -31,40 +36,61 @@ public interface IUserStore
     Task<T?> UpdateAsync<T>(Guid id, Func<UserState, T> mutate);
 }
 
-/// <summary>
-/// One JSON file per user. Fine for a prototype and easy to inspect; swap for EF Core + SQLite
-/// or Postgres by implementing <see cref="IUserStore"/>.
-/// </summary>
-public sealed class JsonFileUserStore : IUserStore
+/// <summary>A signed-in person. The id is also the key of their forecast state.</summary>
+public sealed class AppUser : IdentityUser<Guid>;
+
+/// <summary>One row per user holding their engine state as JSON, deleted with the account.</summary>
+public sealed class StoredState
 {
-    private readonly string _dir;
-    private readonly JsonSerializerOptions _json;
-    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
+    public Guid UserId { get; set; }
+    public string Json { get; set; } = "";
+    public DateTime UpdatedUtc { get; set; }
+}
 
-    public JsonFileUserStore(string directory, JsonSerializerOptions json)
+/// <summary>Accounts (Identity), forecast state and the data-protection keys that sign sign-in tokens.</summary>
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
+    : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>(options), IDataProtectionKeyContext
+{
+    public DbSet<StoredState> States => Set<StoredState>();
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        _dir = directory;
-        _json = json;
-        Directory.CreateDirectory(_dir);
+        base.OnModelCreating(builder);
+        builder.Entity<StoredState>(e =>
+        {
+            e.HasKey(s => s.UserId);
+            e.HasOne<AppUser>().WithOne().HasForeignKey<StoredState>(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
     }
+}
 
-    private string PathFor(Guid id) => Path.Combine(_dir, $"{id:N}.json");
-    private SemaphoreSlim LockFor(Guid id) => _locks.GetOrAdd(id, _ => new SemaphoreSlim(1, 1));
+/// <summary>
+/// Stores each user's engine state as a JSON document in the database. Writes are serialized per user
+/// in-process, which is correct for a single server instance (SQLite); a multi-instance deployment
+/// would add a concurrency token instead.
+/// </summary>
+public sealed class DbUserStore(AppDbContext db) : IUserStore
+{
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> Locks = new();
+
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
+    private static SemaphoreSlim LockFor(Guid id) => Locks.GetOrAdd(id, _ => new SemaphoreSlim(1, 1));
 
     public async Task<UserState?> GetAsync(Guid id)
     {
-        var path = PathFor(id);
-        if (!File.Exists(path)) return null;
-        await using var fs = File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<UserState>(fs, _json);
+        var row = await db.States.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == id);
+        return row is null ? null : JsonSerializer.Deserialize<UserState>(row.Json, Json);
     }
 
     public async Task CreateAsync(UserState state)
     {
-        var gate = LockFor(state.Id);
-        await gate.WaitAsync();
-        try { await WriteAsync(state); }
-        finally { gate.Release(); }
+        db.States.Add(new StoredState { UserId = state.Id, Json = JsonSerializer.Serialize(state, Json), UpdatedUtc = DateTime.UtcNow });
+        await db.SaveChangesAsync();
     }
 
     public async Task<T?> UpdateAsync<T>(Guid id, Func<UserState, T> mutate)
@@ -73,20 +99,22 @@ public sealed class JsonFileUserStore : IUserStore
         await gate.WaitAsync();
         try
         {
-            var state = await GetAsync(id);
-            if (state is null) return default;
+            var row = await db.States.FirstOrDefaultAsync(s => s.UserId == id);
+            if (row is null) return default;
+            var state = JsonSerializer.Deserialize<UserState>(row.Json, Json)!;
             var result = mutate(state);
-            await WriteAsync(state);
+            row.Json = JsonSerializer.Serialize(state, Json);
+            row.UpdatedUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync();
             return result;
         }
         finally { gate.Release(); }
     }
+}
 
-    private async Task WriteAsync(UserState state)
-    {
-        var tmp = PathFor(state.Id) + ".tmp";
-        await using (var fs = File.Create(tmp))
-            await JsonSerializer.SerializeAsync(fs, state, _json);
-        File.Move(tmp, PathFor(state.Id), overwrite: true);
-    }
+/// <summary>Lets `dotnet ef migrations add` build the context without starting the API.</summary>
+public sealed class DesignTimeDbContextFactory : Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory<AppDbContext>
+{
+    public AppDbContext CreateDbContext(string[] args) =>
+        new(new DbContextOptionsBuilder<AppDbContext>().UseSqlite("Data Source=design-time.db").Options);
 }

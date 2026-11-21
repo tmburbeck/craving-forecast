@@ -6,33 +6,36 @@ namespace CravingForecast.Mobile.Services;
 
 public sealed class ApiClient(HttpClient http, JsonSerializerOptions json)
 {
-    private static Guid Me => Session.UserId ?? throw new InvalidOperationException("Not onboarded yet.");
     private static string D(DateOnly d) => d.ToString("yyyy-MM-dd");
 
-    public async Task<OnboardingResponse> CreateUserAsync(OnboardingRequest request)
+    // Every call is about the signed-in user; AuthHandler adds their token.
+    public async Task<MeResponse> GetMeAsync() =>
+        (await http.GetFromJsonAsync<MeResponse>("api/me", json))!;
+
+    public async Task<OnboardingResponse> CreateProfileAsync(OnboardingRequest request)
     {
-        var res = await http.PostAsJsonAsync("api/users", request, json);
+        var res = await http.PostAsJsonAsync("api/me/profile", request, json);
         res.EnsureSuccessStatusCode();
         return (await res.Content.ReadFromJsonAsync<OnboardingResponse>(json))!;
     }
 
     public Task<ForecastDto?> GetForecastAsync() =>
-        http.GetFromJsonAsync<ForecastDto>($"api/users/{Me}/forecast", json);
+        http.GetFromJsonAsync<ForecastDto>("api/me/forecast", json);
 
     public Task<ForecastDto?> PutContextAsync(DateOnly date, ContextRequest request) =>
-        SendAsync<ForecastDto>(HttpMethod.Put, $"api/users/{Me}/context/{D(date)}", request);
+        SendAsync<ForecastDto>(HttpMethod.Put, $"api/me/context/{D(date)}", request);
 
     public Task<ForecastDto?> CheckInAsync(CheckInRequest request) =>
-        SendAsync<ForecastDto>(HttpMethod.Post, $"api/users/{Me}/checkins", request);
+        SendAsync<ForecastDto>(HttpMethod.Post, "api/me/checkins", request);
 
     public async Task<IReadOnlyList<ZoneDto>> GetPendingFeedbackAsync() =>
-        await http.GetFromJsonAsync<List<ZoneDto>>($"api/users/{Me}/feedback/pending", json) ?? [];
+        await http.GetFromJsonAsync<List<ZoneDto>>("api/me/feedback/pending", json) ?? [];
 
     public Task<ForecastDto?> SendFeedbackAsync(FeedbackRequest request) =>
-        SendAsync<ForecastDto>(HttpMethod.Post, $"api/users/{Me}/feedback", request);
+        SendAsync<ForecastDto>(HttpMethod.Post, "api/me/feedback", request);
 
     public async Task<IReadOnlyList<NudgeDto>> GetNudgesAsync(int days = 2) =>
-        await http.GetFromJsonAsync<List<NudgeDto>>($"api/users/{Me}/nudges?days={days}", json) ?? [];
+        await http.GetFromJsonAsync<List<NudgeDto>>($"api/me/nudges?days={days}", json) ?? [];
 
     private async Task<T?> SendAsync<T>(HttpMethod method, string url, object body)
     {

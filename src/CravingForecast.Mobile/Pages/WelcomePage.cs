@@ -37,7 +37,7 @@ public sealed class WelcomePage : ContentPage
         ((View)brand.Children[1]).VerticalOptions = LayoutOptions.Center;
         var top = new Grid { Padding = new Thickness(20, 16, 12, 0) };
         top.Add(brand);
-        var skip = UI.Plain("Skip", App.Instance.Show<OnboardingPage>);
+        var skip = UI.Plain("Skip", App.Instance.Show<AccountPage>);
         skip.HorizontalOptions = LayoutOptions.End;
         top.Add(skip);
 
@@ -60,7 +60,7 @@ public sealed class WelcomePage : ContentPage
         var last = _slide == Slides.Length - 1;
         var action = UI.Primary(last ? "Get started" : "Next", () =>
         {
-            if (last) App.Instance.Show<OnboardingPage>();
+            if (last) App.Instance.Show<AccountPage>();
             else Go(_slide + 1);
         });
 

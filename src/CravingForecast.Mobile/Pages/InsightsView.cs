@@ -8,10 +8,14 @@ namespace CravingForecast.Mobile.Pages;
 public sealed class InsightsView : ContentView
 {
     private readonly ForecastStore _store;
+    private readonly AuthService _auth;
+    private readonly NudgeScheduler _nudges;
 
-    public InsightsView(ForecastStore store)
+    public InsightsView(ForecastStore store, AuthService auth, NudgeScheduler nudges)
     {
         _store = store;
+        _auth = auth;
+        _nudges = nudges;
         store.Changed += () => MainThread.BeginInvokeOnMainThread(Render);
         Render();
     }
@@ -27,9 +31,19 @@ public sealed class InsightsView : ContentView
             Section("Your archetypes", Archetypes(f.Archetypes)),
             Section("Today's signals", Signals(f.ContextFactors)),
             Section("Rules and how much I trust them", Rules(f.Rules)),
-            UI.Text("Rules below 40% trust are phased out. Your \"Was this accurate?\" answers move these.", 12, Weight.Regular, Theme.Muted));
+            UI.Text("Rules below 40% trust are phased out. Your \"Was this accurate?\" answers move these.", 12, Weight.Regular, Theme.Muted),
+            UI.Plain("Sign out", SignOut, Theme.Muted).Also(b => b.HorizontalOptions = LayoutOptions.Center));
         page.Padding = new Thickness(20, 16, 20, 28);
         Content = new ScrollView { Content = page };
+    }
+
+    private async void SignOut()
+    {
+        var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+        if (page is not null && !await page.DisplayAlertAsync("Sign out?", "Your forecast stays saved to your account. Nudges stop on this device until you sign in again.", "Sign out", "Cancel"))
+            return;
+        _nudges.CancelAll();
+        await _auth.SignOutAsync();
     }
 
     private static View Section(string title, View content) => UI.Stack(10, UI.Caps(title), content);

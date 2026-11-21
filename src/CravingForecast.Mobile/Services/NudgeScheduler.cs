@@ -23,6 +23,14 @@ public sealed class NudgeScheduler
 #endif
     }
 
+    /// <summary>Removes every scheduled nudge, e.g. when the user signs out.</summary>
+    public void CancelAll()
+    {
+#if !WINDOWS
+        LocalNotificationCenter.Current.CancelAll();
+#endif
+    }
+
     public async Task RescheduleAsync(IReadOnlyList<NudgeDto> nudges)
     {
         if (!await EnsurePermissionAsync()) return;

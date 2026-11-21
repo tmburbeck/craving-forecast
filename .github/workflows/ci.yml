@@ -1,0 +1,111 @@
+name: CI
+
+# Builds and tests on every push to main and every pull request.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run already in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_VERSION: 10.0.x
+
+jobs:
+  test:
+    name: Engine tests + API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Run engine tests
+        run: dotnet test tests/CravingForecast.Tests --logger "console;verbosity=normal"
+      - name: Build API
+        run: dotnet build src/CravingForecast.Api
+
+  android:
+    name: Android app
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/setup-java@v5
+        with:
+          distribution: microsoft
+          java-version: '17'
+      - name: Install MAUI Android workload
+        run: dotnet workload install maui-android
+      - name: Install Android SDK packages the app needs
+        run: >
+          dotnet build src/CravingForecast.Mobile -f net10.0-android -t:InstallAndroidDependencies
+          -p:AndroidSdkDirectory="$ANDROID_HOME" -p:AcceptAndroidSDKLicenses=True
+      - name: Build Android app
+        run: dotnet build src/CravingForecast.Mobile -f net10.0-android -p:AndroidSdkDirectory="$ANDROID_HOME"
+
+  windows:
+    name: Windows preview
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Install MAUI Windows workload
+        run: dotnet workload install maui-windows
+      # MobileTarget limits the app to Windows, so the Android and iOS workloads aren't needed here.
+      - name: Build Windows app
+        run: dotnet build src/CravingForecast.Mobile -f net10.0-windows10.0.19041.0 -p:MobileTarget=net10.0-windows10.0.19041.0
+
+  # Publishes the API to Azure App Service after every push to main that passes the tests.
+  # Needs the repository variable AZURE_WEBAPP_NAME and the secret AZURE_WEBAPP_PUBLISH_PROFILE;
+  # until they're set, this job is skipped.
+  deploy:
+    name: Deploy API to Azure
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_WEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.webapp-url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Publish API
+        run: dotnet publish src/CravingForecast.Api -c Release -o publish
+      - name: Deploy to App Service
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish
+      - name: Check the live API answers
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS "${{ steps.deploy.outputs.webapp-url }}/api/health"; then exit 0; fi
+            sleep 10
+          done
+          echo "The deployed API didn't answer /api/health within 2 minutes." >&2
+          exit 1

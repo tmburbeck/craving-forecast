@@ -34,6 +34,16 @@ public sealed class ForecastStore(ApiClient api, MorningSync sync, NudgeSchedule
         Changed?.Invoke();
     }
 
+    /// <summary>Forget everything about the last account (on sign-out).</summary>
+    public void Reset()
+    {
+        Forecast = null;
+        Pending = [];
+        NeedsSleepTap = false;
+        Synced = false;
+        Changed?.Invoke();
+    }
+
     public void Seed(ForecastDto forecast)
     {
         Forecast = forecast;

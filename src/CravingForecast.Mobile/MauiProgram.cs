@@ -27,7 +27,12 @@ public static class MauiProgram
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         json.Converters.Add(new JsonStringEnumConverter());
         builder.Services.AddSingleton(json);
-        builder.Services.AddSingleton(new HttpClient { BaseAddress = new Uri(ApiConfig.BaseUrl), Timeout = TimeSpan.FromSeconds(15) });
+        builder.Services.AddSingleton<AuthService>();
+        builder.Services.AddSingleton(sp => new HttpClient(new AuthHandler(sp.GetRequiredService<AuthService>()))
+        {
+            BaseAddress = new Uri(ApiConfig.BaseUrl),
+            Timeout = TimeSpan.FromSeconds(15)
+        });
         builder.Services.AddSingleton<ApiClient>();
 
         builder.Services.AddSingleton(CalendarStore.Default);
@@ -45,6 +50,7 @@ public static class MauiProgram
 
         builder.Services.AddTransient<SplashPage>();
         builder.Services.AddTransient<WelcomePage>();
+        builder.Services.AddTransient<AccountPage>();
         builder.Services.AddTransient<OnboardingPage>();
         builder.Services.AddTransient<HomePage>();
         builder.Services.AddTransient<CheckInPage>();
@@ -54,22 +60,21 @@ public static class MauiProgram
 
 public static class ApiConfig
 {
-    // Android emulators reach the host machine at 10.0.2.2. A physical Android phone on USB uses localhost,
-    // forwarded to the PC with: adb reverse tcp:5077 tcp:5077
-    public static string BaseUrl =>
-        DeviceInfo.Platform == DevicePlatform.Android && DeviceInfo.DeviceType == DeviceType.Virtual
-            ? "http://10.0.2.2:5077/"
-            : "http://localhost:5077/";
+    /// <summary>The hosted API on Azure App Service.</summary>
+    public const string Hosted = "https://salus-tmburbeck-bafcfcg0exfpduh6.westus3-01.azurewebsites.net/";
+
+    /// <summary>
+    /// The hosted API, unless SALUS_API_URL is set (for example http://localhost:5077/ to work against an API
+    /// running on this PC). Android emulators reach the PC at http://10.0.2.2:5077/; a USB phone uses
+    /// http://localhost:5077/ after: adb reverse tcp:5077 tcp:5077
+    /// </summary>
+    public static string BaseUrl { get; } = WithSlash(Environment.GetEnvironmentVariable("SALUS_API_URL") ?? Hosted);
+
+    private static string WithSlash(string url) => url.EndsWith('/') ? url : url + "/";
 }
 
 public static class Session
 {
-    public static Guid? UserId
-    {
-        get => Guid.TryParse(Preferences.Get("userId", ""), out var id) ? id : null;
-        set => Preferences.Set("userId", value?.ToString() ?? "");
-    }
-
     public static DateOnly? LastSync
     {
         get => DateOnly.TryParse(Preferences.Get("lastSync", ""), out var d) ? d : null;
