@@ -44,7 +44,8 @@ public sealed record ForecastDto(
     IReadOnlyList<RuleDto> Rules,
     IReadOnlyList<ZoneDto> Zones,
     IReadOnlyList<HourDto> Hours,
-    NudgeDto? NextNudge);
+    NudgeDto? NextNudge,
+    SleepQuality? Sleep = null);
 
 public sealed record OnboardingResponse(Guid UserId, ForecastDto Forecast);
 

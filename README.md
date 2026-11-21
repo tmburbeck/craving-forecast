@@ -4,6 +4,17 @@
 
 A satiety and craving pattern predictor, named for the Roman goddess of health and well-being. (The code still uses the `CravingForecast` working name.) Instead of logging food, users rate their hunger or craving (1–10) and tag the context. The app learns their personal "danger zones" and sends a nudge 30 minutes before each one, matched to the trigger: a high-volume, high-protein snack or a quick distraction.
 
+**Use it:** https://salus-tmburbeck-bafcfcg0exfpduh6.westus3-01.azurewebsites.net works on phones, iPads and computers. On an iPhone, open it in Safari and choose **Share → Add to Home Screen** to use it like an app.
+
+## Screens
+
+Taken automatically by the web walk-through in CI on every merge to `main`; pull requests get their own set as a comment.
+
+| Phone | iPad | Desktop |
+| --- | --- | --- |
+| <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/today-phone.png?raw=true" width="220" alt="Today on a phone"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/today-ipad.png?raw=true" width="280" alt="Today on an iPad"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/today-desktop.png?raw=true" width="400" alt="Today on a desktop"> |
+| <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/insights-phone.png?raw=true" width="220" alt="Insights on a phone"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/insights-ipad.png?raw=true" width="280" alt="Insights on an iPad"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/insights-desktop.png?raw=true" width="400" alt="Insights on a desktop"> |
+
 ## How the prediction works
 
 | Layer | When it leads | What it does |
@@ -18,10 +29,12 @@ A satiety and craving pattern predictor, named for the Roman goddess of health a
 
 ```
 src/CravingForecast.Core     Pure engine: archetypes, context signals, blending, zones, nudges, feedback. No dependencies.
-src/CravingForecast.Api      ASP.NET Core minimal API: email/password accounts, SQLite via EF Core.
-src/CravingForecast.Mobile   .NET MAUI app (iOS + Android): splash, welcome, quiz, Today/Insights tabs, check-ins,
+src/CravingForecast.Api      ASP.NET Core minimal API: email/password accounts, SQLite via EF Core. Also serves the web app.
+src/CravingForecast.Web      Blazor WebAssembly web app for phone, iPad and desktop (installable to the home screen).
+src/CravingForecast.Mobile   .NET MAUI app (iOS, Android, Windows): splash, welcome, quiz, Today/Insights tabs, check-ins,
                              HealthKit, calendar, scheduled nudges.
-tests/CravingForecast.Tests  xUnit tests for the engine and the signal classifiers.
+tests/CravingForecast.Tests  xUnit tests for the engine, presentation rules and API.
+tests/e2e                    Playwright walk-through of the web app; also takes the screenshots.
 ```
 
 ## Run it
@@ -30,10 +43,12 @@ Requires the .NET 10 SDK (pinned in `global.json`).
 
 ```bash
 dotnet test tests/CravingForecast.Tests
-cd src/CravingForecast.Api && dotnet run           # http://localhost:5077
+cd src/CravingForecast.Api && dotnet run           # API and web app at http://localhost:5077
 ```
 
-Then open `CravingForecast.Api.http` in Rider, Visual Studio or VS Code (REST Client extension) and work through the requests in order.
+Open http://localhost:5077 for the web app, or `CravingForecast.Api.http` in Rider, Visual Studio or VS Code (REST Client extension) to call the API directly.
+
+To run the browser walk-through against it (from `tests/e2e`, with Node 22): `npm ci`, `npx playwright install chromium`, then `node walkthrough.mjs http://localhost:5077 shots`.
 
 ### Mobile
 
@@ -47,13 +62,14 @@ dotnet build src/CravingForecast.Mobile -f net10.0-android    # emulator calls t
 
 ## Endpoints
 
-Everything under `/api/me` needs `Authorization: Bearer <accessToken>` and only ever touches the signed-in user's data.
+Everything under `/api/me` needs a signed-in user (the apps send `Authorization: Bearer <accessToken>`; the web app uses the `salus.auth` cookie from `/api/auth/login?useCookies=true`) and only ever touches that user's data.
 
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/auth/register` | Create an account (email + password of 10+ characters) |
 | POST | `/api/auth/login` | Sign in → `accessToken` (1 hour) + `refreshToken` |
 | POST | `/api/auth/refresh` | Swap a refresh token for new tokens |
+| POST | `/api/auth/logout` | End a web (cookie) session |
 | GET | `/api/me` | Signed-in email, and whether the quiz is done |
 | POST | `/api/me/profile` | Onboarding quiz → day-1 forecast (once per account) |
 | GET | `/api/me/forecast?date=` | Hourly risk, zones, archetypes, factors, rule trust, next nudge |

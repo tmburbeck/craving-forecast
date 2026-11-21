@@ -1,0 +1,99 @@
+@page "/welcome"
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Welcome · Salus</PageTitle>
+<div class="narrow stack" style="--gap:24px">
+    <div class="row between">
+        <Brand />
+        <a class="btn btn-plain" href="signup">Skip</a>
+    </div>
+
+    <div class="fill stack" style="--gap:28px">
+        <div class="art" aria-hidden="@(_slide == 0 ? "false" : "true")">
+            @if (_slide == 0)
+            {
+                <div class="card" style="border:0" role="img" aria-label="Example chart of craving risk rising in the afternoon and at night">
+                    <div class="stack" style="--gap:12px">
+                        <span class="small" style="font-weight:700">Today's craving risk</span>
+                        <div class="chart" style="--n:9;height:120px;padding-top:0">
+                            @foreach (var r in Demo) { <div class="bar @Risk.Level(r).ToString().ToLowerInvariant()" style="height:@(16 + (int)(r * 96))px"></div> }
+                        </div>
+                        <div class="row between tiny muted"><span>Morning</span><span>Afternoon</span><span>Night</span></div>
+                    </div>
+                </div>
+            }
+            else if (_slide == 1)
+            {
+                <div class="card compact row" style="border:0;align-items:flex-start;--gap:12px">
+                    <Logo Size="38" />
+                    <div class="stack grow" style="--gap:2px">
+                        <div class="row between"><span class="small" style="font-weight:700">Salus</span><span class="tiny muted">2:30 PM</span></div>
+                        <span class="small" style="font-weight:600;font-size:14px">Afternoon slump in 30 minutes</span>
+                        <span class="small body">Greek yogurt with berries now will carry you through it.</span>
+                    </div>
+                </div>
+                <div class="card compact small body" style="border:0;opacity:.6;margin:0 14px">Was last night accurate? One tap helps.</div>
+            }
+            else
+            {
+                @foreach (var (icon, text) in Privacy)
+                {
+                    <div class="card compact row" style="border:0">
+                        <span style="color:var(--green)"><Icon Name="@icon" /></span>
+                        <span style="font-weight:600;font-size:14px">@text</span>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="stack" style="--gap:10px" aria-live="polite">
+            <h1 class="heading">@Slides[_slide].Title</h1>
+            <p class="body">@Slides[_slide].Body</p>
+        </div>
+    </div>
+
+    <div class="stack" style="--gap:14px">
+        <div class="dots" aria-label="Slide @(_slide + 1) of @Slides.Length">
+            @for (var i = 0; i < Slides.Length; i++) { <span class="@(i == _slide ? "on" : "")"></span> }
+        </div>
+        <div class="row" style="--gap:10px">
+            @if (_slide > 0) { <button class="btn icon-btn" aria-label="Previous slide" @onclick="() => _slide--"><Icon Name="back" Size="18" Stroke="2.2" /></button> }
+            @if (_slide < Slides.Length - 1)
+            {
+                <button class="btn btn-primary" @onclick="() => _slide++">Next</button>
+            }
+            else
+            {
+                <a class="btn btn-primary" href="signup">Get started</a>
+            }
+        </div>
+        <a class="btn btn-plain" href="signin">I already have an account</a>
+    </div>
+</div>
+
+@code {
+    private int _slide;
+
+    private static readonly double[] Demo = [0.15, 0.22, 0.3, 0.62, 0.78, 0.45, 0.38, 0.7, 0.85];
+
+    private static readonly (string Title, string Body)[] Slides =
+    [
+        ("Know your cravings before they arrive",
+            "Rate how hungry or tempted you feel now and then. Salus learns the hours you are most at risk, like a weather forecast for cravings."),
+        ("A gentle heads-up, right on time",
+            "Before each danger zone you get one idea that fits: a filling snack or a quick distraction."),
+        ("It learns you, privately",
+            "Start with a one-minute quiz. Your own check-ins take over from there, and your details stay coarse.")
+    ];
+
+    private static readonly (string Icon, string Text)[] Privacy =
+    [
+        ("moon", "Sleep saved only as good, okay or poor"),
+        ("calendar", "No calendar or health data needed on the web"),
+        ("chart", "Fully personal by day 14")
+    ];
+
+    protected override async Task OnInitializedAsync() =>
+        await JS.InvokeVoidAsync("localStorage.setItem", "salus.seenWelcome", "1");
+}

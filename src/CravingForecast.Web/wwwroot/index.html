@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Salus</title>
+    <meta name="description" content="Know your cravings before they arrive." />
+    <meta name="theme-color" content="#F4EDE2" />
+    <base href="/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Salus" />
+    <link rel="preload" href="fonts/PlusJakartaSans-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="css/app.css" />
+</head>
+
+<body>
+    <div id="app">
+        <!-- The splash shows while the app downloads; the app replaces it when it starts. -->
+        <div class="splash" role="status" aria-label="Loading Salus">
+            <div class="logo">
+                <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#F4EDE2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V11 M12 11C12 7 9 4 4 4c0 4 3 7 8 7z M12 14c0-3 2.5-6 7-6 0 3.5-2.5 6-7 6z" /></svg>
+            </div>
+            <div class="words">
+                <span class="greeting" id="greeting">Welcome</span>
+                <span class="name">Salus</span>
+                <span class="body">Know your cravings before they arrive.</span>
+            </div>
+            <div class="loader" aria-hidden="true"></div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui" role="alert">
+        Something went wrong. <a href="" class="reload">Reload</a>
+        <span class="dismiss" aria-label="Dismiss">×</span>
+    </div>
+
+    <script>
+        (function () {
+            var h = new Date().getHours();
+            document.getElementById("greeting").textContent =
+                h < 5 ? "Hello, night owl" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+        })();
+    </script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

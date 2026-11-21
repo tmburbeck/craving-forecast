@@ -35,6 +35,59 @@ jobs:
       - name: Build API
         run: dotnet build src/CravingForecast.Api
 
+  web:
+    name: Web app walk-through
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write        # push screenshots to the "screenshots" branch
+      pull-requests: write   # post them on the pull request
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+      - name: Install Playwright and Chromium
+        working-directory: tests/e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Publish and start the API with the web app
+        run: |
+          dotnet publish src/CravingForecast.Api -c Release -o "$RUNNER_TEMP/app"
+          cd "$RUNNER_TEMP/app"
+          ConnectionStrings__Salus="Data Source=$RUNNER_TEMP/salus.db" Auth__RequestsPerMinute=1000 \
+            ASPNETCORE_URLS=http://127.0.0.1:5080 nohup dotnet CravingForecast.Api.dll > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5080/api/health && exit 0; sleep 1; done
+          echo "The API didn't start." >&2; cat "$RUNNER_TEMP/api.log"; exit 1
+      - name: Walk through the web app and take screenshots
+        working-directory: tests/e2e
+        run: node walkthrough.mjs http://127.0.0.1:5080 shots
+      - name: Server log
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log"
+      - name: Keep the screenshots with this run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: tests/e2e/shots
+          if-no-files-found: ignore
+      # Pull requests get a screenshots comment; main refreshes the README gallery. Not for forks (no write access).
+      - name: Publish screenshots
+        if: >-
+          (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: bash .github/scripts/publish-screenshots.sh tests/e2e/shots
+
   android:
     name: Android app
     runs-on: ubuntu-latest
@@ -72,12 +125,12 @@ jobs:
       - name: Build Windows app
         run: dotnet build src/CravingForecast.Mobile -f net10.0-windows10.0.19041.0 -p:MobileTarget=net10.0-windows10.0.19041.0
 
-  # Publishes the API to Azure App Service after every push to main that passes the tests.
+  # Publishes the API and web app to Azure App Service after every push to main that passes the tests and the web walk-through.
   # Needs the repository variable AZURE_WEBAPP_NAME and the secret AZURE_WEBAPP_PUBLISH_PROFILE;
   # until they're set, this job is skipped.
   deploy:
-    name: Deploy API to Azure
-    needs: test
+    name: Deploy to Azure
+    needs: [test, web]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_WEBAPP_NAME != ''
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -92,7 +145,7 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - name: Publish API
+      - name: Publish API and web app
         run: dotnet publish src/CravingForecast.Api -c Release -o publish
       - name: Deploy to App Service
         id: deploy

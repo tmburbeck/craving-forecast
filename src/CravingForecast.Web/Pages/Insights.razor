@@ -1,0 +1,101 @@
+@page "/insights"
+@layout AppLayout
+@implements IDisposable
+@inject AppState State
+@inject Api Api
+@inject NavigationManager Nav
+
+<PageTitle>Insights · Salus</PageTitle>
+@if (State.Forecast is { } f)
+{
+    <div class="stack" style="--gap:16px">
+        <div class="stack" style="--gap:4px">
+            <h1 class="heading" style="font-size:30px">How it learns you</h1>
+            <p class="small muted" style="font-size:14px">What today's forecast is built from.</p>
+        </div>
+
+        <div class="insights-grid">
+            <div class="col">
+                <section class="card stack" style="--gap:14px">
+                    <div class="row" style="--gap:16px">
+                        <Ring Value="f.PersonalShare" Label="@($"{f.PersonalShare:P0} of today's forecast comes from your own data")" />
+                        <div class="stack" style="--gap:4px">
+                            <h2 class="title">Personal today</h2>
+                            <p class="small body">The rest comes from your archetypes. Your own check-ins take over fully by day 14.</p>
+                        </div>
+                    </div>
+                    <div class="stack" style="--gap:6px">
+                        <div class="row between tiny"><span class="muted">Day 1</span><span style="font-weight:700">Day @f.Day</span><span class="muted">Day 14</span></div>
+                        <div class="meter" role="progressbar" aria-valuemin="1" aria-valuemax="14" aria-valuenow="@Math.Clamp(f.Day, 1, 14)" aria-label="Days of learning">
+                            <span style="width:@((int)Math.Round((Math.Clamp(f.Day, 1, 14) - 1) / 13.0 * 100))%"></span>
+                        </div>
+                    </div>
+                    <p class="tiny muted">Today's ceiling is @f.Ceiling.ToString("P0"). Each hour only reaches it once it has enough of your check-ins.</p>
+                </section>
+
+                <section class="stack" style="--gap:10px">
+                    <h2 class="caps">Your archetypes</h2>
+                    @foreach (var a in f.Archetypes)
+                    {
+                        var (match, css) = a.Strength >= 0.66 ? ("Strong match", "calm-text") : a.Strength >= 0.33 ? ("Partial match", "muted") : ("Light match", "muted");
+                        <div class="card compact stack" style="--gap:4px">
+                            <div class="row between"><span style="font-weight:700">@a.Name</span><span class="tiny @css" style="font-weight:700">@match</span></div>
+                            <p class="small body">@a.Description</p>
+                        </div>
+                    }
+                </section>
+            </div>
+
+            <div class="col">
+                <section class="stack" style="--gap:10px">
+                    <h2 class="caps">Today's signals</h2>
+                    @if (f.ContextFactors.Count == 0)
+                    {
+                        <p class="muted" style="font-size:14px">@(f.Sleep is null ? "No signals yet today. Answer \"How did you sleep?\" on Today to add one." : "Nothing unusual today, so the forecast follows your usual pattern.")</p>
+                    }
+                    @foreach (var x in f.ContextFactors)
+                    {
+                        var (bg, color) = x.Multiplier > 1.001 ? ("var(--wood)", "var(--danger-text)") : x.Multiplier < 0.999 ? ("var(--green-soft)", "var(--green-text)") : ("var(--chip)", "var(--ink)");
+                        <div class="card compact small" style="background:@bg;border-color:transparent;color:@color;font-weight:600">@x.Label</div>
+                    }
+                </section>
+
+                <section class="stack" style="--gap:10px">
+                    <h2 class="caps">Rules and how much I trust them</h2>
+                    <div class="card" style="padding:6px 16px">
+                        @for (var i = 0; i < f.Rules.Count; i++)
+                        {
+                            var r = f.Rules[i];
+                            var fill = r.PhasedOut ? "var(--track)" : r.Trust >= 0.6 ? "var(--green)" : "var(--watch)";
+                            <div class="stack" style="--gap:8px;padding:12px 0;@(i < f.Rules.Count - 1 ? "border-bottom:1px solid var(--border)" : "")">
+                                <div class="row between">
+                                    <span class="@(r.PhasedOut ? "muted" : "")" style="font-size:14px"><b>@r.Name</b> <span class="muted">· @r.StartsAt</span></span>
+                                    <span class="@(r.PhasedOut ? "muted" : "")" style="font-weight:700;font-size:13px">@(r.PhasedOut ? "Phased out" : r.Trust.ToString("P0"))</span>
+                                </div>
+                                <div class="meter thin"><span style="width:@((int)Math.Round(Math.Clamp(r.Trust, 0, 1) * 100))%;background:@fill"></span></div>
+                            </div>
+                        }
+                    </div>
+                    <p class="tiny muted">Rules below 40% trust are phased out. Your "Was this accurate?" answers move these.</p>
+                </section>
+
+                <button class="btn btn-plain muted" style="align-self:center" @onclick="SignOut">Sign out</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized() => State.Changed += OnChanged;
+
+    private async Task SignOut()
+    {
+        await Api.SignOutAsync();
+        State.Reset();
+        Nav.NavigateTo("signin");
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.Changed -= OnChanged;
+}

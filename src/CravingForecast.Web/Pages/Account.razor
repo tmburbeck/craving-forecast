@@ -1,0 +1,77 @@
+@page "/signin"
+@page "/signup"
+@inject Api Api
+@inject AppState State
+@inject NavigationManager Nav
+
+<PageTitle>@(_signingIn ? "Sign in" : "Create account") · Salus</PageTitle>
+<div class="narrow stack" style="--gap:22px">
+    <Brand />
+    <div class="stack" style="--gap:8px">
+        <h1 class="heading">@(_signingIn ? "Welcome back" : "Create your account")</h1>
+        <p class="body">@(_signingIn
+            ? "Sign in to pick up your forecast where you left off."
+            : "Your forecast is saved to your account, so it's there on your phone, iPad and computer.")</p>
+    </div>
+
+    <form class="stack" style="--gap:18px" @onsubmit="Submit" novalidate>
+        <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="email" inputmode="email" @bind="_email" placeholder="you@example.com" required />
+        </div>
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="@(_signingIn ? "current-password" : "new-password")"
+                   @bind="_password" placeholder="@(_signingIn ? "Your password" : "At least 10 characters")" required minlength="10"
+                   aria-describedby="@(_signingIn ? null : "password-hint")" />
+            @if (!_signingIn) { <span id="password-hint" class="tiny muted">At least 10 characters. A short phrase is easy to remember.</span> }
+        </div>
+        @if (_error is not null) { <p class="error" role="alert">@_error</p> }
+        <button class="btn btn-primary" type="submit" disabled="@_busy">
+            @(_busy ? (_signingIn ? "Signing in…" : "Creating your account…") : (_signingIn ? "Sign in" : "Create account"))
+        </button>
+    </form>
+
+    <a class="btn btn-plain" href="@(_signingIn ? "signup" : "signin")">
+        @(_signingIn ? "New here? Create an account" : "Already have an account? Sign in")
+    </a>
+</div>
+
+@code {
+    private bool _signingIn;
+    private string _email = "";
+    private string _password = "";
+    private string? _error;
+    private bool _busy;
+
+    protected override void OnParametersSet()
+    {
+        _signingIn = Nav.Uri.Contains("/signin", StringComparison.OrdinalIgnoreCase);
+        _error = null;
+    }
+
+    private async Task Submit()
+    {
+        if (_busy) return;
+        var email = _email.Trim();
+        if (!email.Contains('@')) { _error = "Enter your email address."; return; }
+        if (_password.Length == 0) { _error = "Enter your password."; return; }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            _error = _signingIn ? await Api.SignInAsync(email, _password) : await Api.RegisterAsync(email, _password);
+            if (_error is not null) return;
+            _password = "";
+            State.Reset();
+            var me = await State.RefreshMeAsync();
+            Nav.NavigateTo(me is { HasProfile: true } ? "today" : "quiz");
+        }
+        catch (Exception)
+        {
+            _error = "Couldn't reach Salus. Check your connection and try again.";
+        }
+        finally { _busy = false; }
+    }
+}

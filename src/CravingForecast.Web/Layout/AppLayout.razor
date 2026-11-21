@@ -1,0 +1,91 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject AppState State
+@inject Api Api
+@inject NavigationManager Nav
+
+@* The signed-in shell: sidebar on desktops, bottom bar with the check-in button on phones and tablets. *@
+@if (_ready)
+{
+    <div class="shell">
+        <nav class="sidebar" aria-label="Main">
+            <span class="brand"><Brand /></span>
+            <NavLink class="side-link" href="today"><Icon Name="chart" /> Today</NavLink>
+            <NavLink class="side-link" href="insights"><Icon Name="clock" /> Insights</NavLink>
+            <a class="btn btn-primary" href="checkin" style="margin-top:12px"><Icon Name="plus" Stroke="2.4" /> Check in</a>
+            <div class="push stack" style="--gap:4px">
+                <span class="tiny muted" style="padding:0 12px">@State.Me?.Email</span>
+                <button class="btn btn-plain muted" style="justify-content:flex-start" @onclick="SignOut"><Icon Name="signout" Size="18" /> Sign out</button>
+            </div>
+        </nav>
+        <main>@Body</main>
+        <nav class="bottom-nav" aria-label="Main" hidden="@OnCheckIn">
+            <NavLink class="tab" href="today"><Icon Name="chart" /> Today</NavLink>
+            <a class="fab" href="checkin" aria-label="Check in"><Icon Name="plus" Size="26" Stroke="2.4" /></a>
+            <NavLink class="tab" href="insights"><Icon Name="clock" /> Insights</NavLink>
+        </nav>
+    </div>
+}
+else
+{
+    <div class="splash" role="status" aria-label="Loading your forecast">
+        <div class="logo"><Icon Name="sprout" Size="54" Stroke="1.6" /></div>
+        <div class="words"><span class="name">Salus</span><span class="body">@_status</span></div>
+        @if (_error) { <button class="btn btn-primary" style="max-width:220px" @onclick="LoadAsync">Try again</button> }
+        else { <div class="loader" aria-hidden="true"></div> }
+    </div>
+}
+
+@code {
+    private bool _ready;
+    private bool _error;
+    private string _status = "Getting today's forecast";
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.Changed += OnChanged;
+        Nav.LocationChanged += OnLocationChanged;
+        await LoadAsync();
+    }
+
+    /// <summary>Only signed-in people who've done the quiz get here; everyone else is sent to the right step.</summary>
+    private async Task LoadAsync()
+    {
+        _error = false;
+        _status = "Getting today's forecast";
+        try
+        {
+            var me = State.Me ?? await State.RefreshMeAsync();
+            if (me is null) { Nav.NavigateTo("signin"); return; }
+            if (!me.HasProfile) { Nav.NavigateTo("quiz"); return; }
+            if (State.Forecast is null) await State.LoadAsync();
+            _ready = true;
+        }
+        catch (SignedOutException) { State.Reset(); Nav.NavigateTo("signin"); }
+        catch (Exception)
+        {
+            _error = true;
+            _status = "Couldn't reach Salus. Check your connection and try again.";
+        }
+    }
+
+    private async Task SignOut()
+    {
+        await Api.SignOutAsync();
+        State.Reset();
+        Nav.NavigateTo("signin");
+    }
+
+    // The check-in screen is itself what the + button opens, so the bottom bar steps aside there.
+    private bool OnCheckIn => Nav.Uri.Contains("/checkin", StringComparison.OrdinalIgnoreCase);
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => StateHasChanged();
+
+    public void Dispose()
+    {
+        State.Changed -= OnChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

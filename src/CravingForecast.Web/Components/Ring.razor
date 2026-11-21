@@ -1,0 +1,20 @@
+@* A progress ring: how much of today's forecast comes from the person's own data. *@
+<div style="position:relative;width:84px;height:84px;flex:none" role="img" aria-label="@Label">
+    <svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true">
+        <circle cx="42" cy="42" r="37" fill="none" stroke="var(--chip)" stroke-width="10" />
+        @if (Value >= 0.005)
+        {
+            <circle cx="42" cy="42" r="37" fill="none" stroke="var(--green)" stroke-width="10" stroke-linecap="round"
+                    stroke-dasharray="@Dash" transform="rotate(-90 42 42)" />
+        }
+    </svg>
+    <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800">@Value.ToString("P0")</span>
+</div>
+
+@code {
+    [Parameter] public double Value { get; set; }
+    [Parameter] public string Label { get; set; } = "";
+
+    private const double Circumference = 2 * Math.PI * 37;
+    private string Dash => FormattableString.Invariant($"{Math.Clamp(Value, 0, 1) * Circumference:0.##} {Circumference:0.##}");
+}

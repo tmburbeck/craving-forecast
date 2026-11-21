@@ -1,0 +1,12 @@
+{
+  "name": "salus-e2e",
+  "private": true,
+  "description": "Browser walk-through of the Salus web app; also takes the screenshots for pull requests and the README.",
+  "type": "module",
+  "scripts": {
+    "walkthrough": "node walkthrough.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

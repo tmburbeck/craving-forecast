@@ -1,0 +1,71 @@
+@page "/checkin"
+@layout AppLayout
+@inject AppState State
+@inject NavigationManager Nav
+
+<PageTitle>Check in · Salus</PageTitle>
+<div class="stack" style="--gap:24px;max-width:560px;margin:0 auto">
+    <div class="row between">
+        <a class="btn icon-btn" href="today" aria-label="Close"><Icon Name="close" Size="20" Stroke="2.2" /></a>
+        <span class="small muted" style="font-weight:600">@DateTime.Now.ToString("h:mm tt")</span>
+        <span style="width:44px"></span>
+    </div>
+
+    <div class="stack" style="--gap:6px">
+        <h1 class="heading">How strong is the pull right now?</h1>
+        <p class="muted" style="font-size:14px">Hunger or craving, whichever you feel. 1 is none, 10 is hard to ignore.</p>
+    </div>
+
+    <div class="stack center" style="--gap:4px" aria-live="polite">
+        <span class="@LevelClass" style="font-size:72px;line-height:1;font-weight:800">@(_level > 0 ? _level : "–")</span>
+        <span class="body" style="font-weight:700">@CheckInScale.Word(_level)</span>
+    </div>
+
+    <div class="levels" role="group" aria-label="Craving level, 1 to 10">
+        @for (var n = 1; n <= 10; n++)
+        {
+            var value = n;
+            <button class="level" aria-pressed="@(_level == value ? "true" : "false")" aria-label="Level @value" @onclick="() => _level = value">@value</button>
+        }
+    </div>
+
+    <div class="stack" style="--gap:10px">
+        <span class="label">What's going on? <span class="muted" style="font-weight:500">Optional</span></span>
+        <div class="wrap" role="group" aria-label="What's going on">
+            @foreach (var t in TriggerLabels.All)
+            {
+                var key = t.Key;
+                <button class="pill" aria-pressed="@(_tags.Contains(key) ? "true" : "false")" @onclick="() => Toggle(key)">@t.Value</button>
+            }
+        </div>
+    </div>
+
+    @if (_error is not null) { <p class="error" role="alert">@_error</p> }
+    <button class="btn btn-primary" disabled="@(_level == 0 || _busy)" @onclick="Log">@(_busy ? "Logging…" : "Log it")</button>
+</div>
+
+@code {
+    private readonly HashSet<Trigger> _tags = [];
+    private int _level;
+    private bool _busy;
+    private string? _error;
+
+    private string LevelClass => CheckInScale.Level(_level) switch { RiskLevel.Danger => "danger-text", RiskLevel.Watch => "watch-text", _ => "calm-text" };
+
+    private void Toggle(Trigger t) { if (!_tags.Remove(t)) _tags.Add(t); }
+
+    private async Task Log()
+    {
+        if (_busy || _level == 0) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            await State.CheckInAsync(_level, _tags);
+            Nav.NavigateTo("today");
+        }
+        catch (SignedOutException) { State.Reset(); Nav.NavigateTo("signin"); }
+        catch (Exception) { _error = "Couldn't log that. Check your connection and try again."; }
+        finally { _busy = false; }
+    }
+}

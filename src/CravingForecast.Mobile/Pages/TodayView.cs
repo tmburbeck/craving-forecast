@@ -1,5 +1,6 @@
 using CravingForecast.Core;
 using CravingForecast.Core.Contracts;
+using CravingForecast.Core.Presentation;
 using CravingForecast.Mobile.Services;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -61,9 +62,6 @@ public sealed class TodayView : ContentView
 
     private static bool IsToday(ForecastDto f) => f.Date == DateOnly.FromDateTime(DateTime.Now);
 
-    private static bool Covers(ZoneDto z, int hour) =>
-        z.StartHour <= z.EndHour ? hour >= z.StartHour && hour <= z.EndHour : hour >= z.StartHour || hour <= z.EndHour;
-
     private static View Header(ForecastDto f)
     {
         var g = new Grid { ColumnSpacing = 12 };
@@ -96,40 +94,12 @@ public sealed class TodayView : ContentView
     /// <summary>The weather-style headline: are we in a zone now, and when is the next one?</summary>
     private static View Outlook(ForecastDto f)
     {
-        var today = IsToday(f);
-        var hour = DateTime.Now.Hour;
-        var risk = f.Hours.FirstOrDefault(h => h.Hour == hour)?.Risk ?? 0;
-        var current = today ? f.Zones.FirstOrDefault(z => Covers(z, hour)) : null;
-        var next = (today ? f.Zones.Where(z => z.StartHour > hour) : f.Zones).MinBy(z => z.StartHour);
-
-        string status, headline, detail;
-        Color statusColor;
-        if (current is not null)
-        {
-            (status, statusColor) = ("Right now · Danger zone", Theme.DangerText);
-            headline = $"Danger zone until {UI.Hour(current.EndHour + 1)}";
-            detail = $"{Labels.Triggers[current.Context]} tends to hit now. Lean on one of the ideas below.";
-        }
-        else
-        {
-            (status, statusColor) = risk >= UI.WatchThreshold ? ("Right now · Watch", Theme.WatchText) : ("Right now · Calm", Theme.GreenText);
-            if (next is null)
-            {
-                headline = "Clear for the rest of today";
-                detail = "No danger zones left. Check in anytime with the + button.";
-            }
-            else
-            {
-                headline = $"Clear until {UI.Hour(next.StartHour)}";
-                detail = $"{Labels.Triggers[next.Context]} usually hits around then."
-                         + (f.NextNudge is { } n ? $" A nudge is set for {n.SendAt.LocalDateTime:h:mm tt}." : "");
-            }
-        }
-
+        var o = OutlookBuilder.For(f, DateTime.Now);
+        var color = o.Now switch { RiskLevel.Danger => Theme.DangerText, RiskLevel.Watch => Theme.WatchText, _ => Theme.GreenText };
         return UI.Stack(4,
-            UI.Text(status, 14, Weight.SemiBold, statusColor),
-            UI.Heading(headline, 34),
-            UI.Text(detail, 15, Weight.Regular, Theme.Body));
+            UI.Text(o.Status, 14, Weight.SemiBold, color),
+            UI.Heading(o.Headline, 34),
+            UI.Text(o.Detail, 15, Weight.Regular, Theme.Body));
     }
 
     /// <summary>Hourly bars from 6 AM to 11 PM, extended past midnight when late hours carry risk.</summary>
@@ -234,7 +204,7 @@ public sealed class TodayView : ContentView
         var card = UI.Stack(12,
             UI.Stack(4,
                 UI.Text("Was this accurate?", 16, Weight.Bold),
-                UI.Text($"I predicted a {Labels.Triggers[z.Context].ToLowerInvariant()} window from {z.Label}.", 14, Weight.Regular, Theme.Body)),
+                UI.Text(TriggerLabels.FeedbackPrompt(z), 14, Weight.Regular, Theme.Body)),
             UI.Wrap(
             [
                 UI.Pill("Yes, it hit", false, () => Feedback(z, FeedbackVerdict.Accurate, null)),

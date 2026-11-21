@@ -1,0 +1,51 @@
+@* Hourly bars from 6 AM to 11 PM, extended past midnight when late hours carry risk. *@
+<div class="stack" style="--gap:12px">
+    <div class="row between">
+        <span class="label">Today's craving risk</span>
+        <span class="tiny muted">by hour</span>
+    </div>
+    <div class="chart" style="--n:@_hours.Count" role="img" aria-label="@_summary">
+        @for (var i = 0; i < _hours.Count; i++)
+        {
+            var r = _risk.GetValueOrDefault(_hours[i]);
+            var css = Risk.Level(r).ToString().ToLowerInvariant() + (i < _now ? " past" : "") + (i == _now ? " now" : "");
+            <div class="bar @css" style="height:@(14 + (int)Math.Round(r * 100))px">
+                @if (i == _now) { <span class="now-label">Now</span> }
+            </div>
+        }
+    </div>
+    <div class="axis" style="--n:@_hours.Count" aria-hidden="true">
+        @foreach (var h in _hours)
+        {
+            <span>@(h % 3 == 0 ? TimeText.ShortHour(h) : "")</span>
+        }
+    </div>
+    <div class="legend" aria-hidden="true">
+        <span><i style="background:var(--calm)"></i>Calm</span>
+        <span><i style="background:var(--watch)"></i>Watch</span>
+        <span><i style="background:var(--danger)"></i>Danger zone</span>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ForecastDto Forecast { get; set; } = default!;
+    [Parameter] public bool IsToday { get; set; }
+
+    private Dictionary<int, double> _risk = [];
+    private List<int> _hours = [];
+    private int _now = -1;
+    private string _summary = "";
+
+    protected override void OnParametersSet()
+    {
+        _risk = Forecast.Hours.ToDictionary(h => h.Hour, h => h.Risk);
+        var order = Enumerable.Range(0, 24).Select(i => (6 + i) % 24).ToList();
+        var last = 17;
+        for (var i = 18; i < 24; i++)
+            if (_risk.GetValueOrDefault(order[i]) >= Risk.WatchThreshold) last = i;
+        _hours = order.Take(last + 1).ToList();
+        _now = IsToday ? _hours.IndexOf(DateTime.Now.Hour) : -1;
+        var peak = Forecast.Hours.MaxBy(h => h.Risk);
+        _summary = peak is null ? "Craving risk by hour" : $"Craving risk by hour. Highest is {peak.Risk:P0} at {TimeText.Hour(peak.Hour)}.";
+    }
+}

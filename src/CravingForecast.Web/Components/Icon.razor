@@ -1,0 +1,24 @@
+@* Stroke icons on a 24-unit grid; the same shapes as the MAUI app. *@
+<svg width="@Size" height="@Size" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="@Stroke"
+     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="@Paths[Name]" /></svg>
+
+@code {
+    [Parameter] public string Name { get; set; } = "sprout";
+    [Parameter] public int Size { get; set; } = 22;
+    [Parameter] public string Stroke { get; set; } = "2";
+
+    private static readonly Dictionary<string, string> Paths = new()
+    {
+        ["sprout"] = "M12 21V11 M12 11C12 7 9 4 4 4c0 4 3 7 8 7z M12 14c0-3 2.5-6 7-6 0 3.5-2.5 6-7 6z",
+        ["chart"] = "M3 3v18h18 M7 15l4-4 3 3 5-6",
+        ["clock"] = "M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3 2",
+        ["plus"] = "M12 5v14 M5 12h14",
+        ["close"] = "M6 6l12 12 M18 6 6 18",
+        ["back"] = "M15 18l-6-6 6-6",
+        ["check"] = "M20 6 9 17l-5-5",
+        ["bell"] = "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9 M10.3 21a1.94 1.94 0 0 0 3.4 0",
+        ["moon"] = "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z",
+        ["calendar"] = "M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V7a2 2 0 0 1 2 -2z M16 3v4 M8 3v4 M3 11h18",
+        ["signout"] = "M9 21H5a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2h4 M16 17l5-5-5-5 M21 12H9"
+    };
+}
