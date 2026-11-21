@@ -6,13 +6,12 @@ public class App : Application
 {
     private readonly IServiceProvider _services;
 
-    public App(IServiceProvider services)
-    {
-        _services = services;
-        MainPage = Session.UserId is null ? Wrap<OnboardingPage>() : Wrap<ForecastPage>();
-    }
+    public App(IServiceProvider services) => _services = services;
 
-    public void ShowForecast() => MainPage = Wrap<ForecastPage>();
+    protected override Window CreateWindow(IActivationState? activationState) =>
+        new(Session.UserId is null ? Wrap<OnboardingPage>() : Wrap<ForecastPage>());
+
+    public void ShowForecast() => Windows[0].Page = Wrap<ForecastPage>();
 
     private NavigationPage Wrap<T>() where T : Page => new(_services.GetRequiredService<T>())
     {

@@ -96,7 +96,7 @@ public sealed class OnboardingPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Couldn't reach the server", $"Is the API running at {ApiConfig.BaseUrl}?\n\n{ex.Message}", "OK");
+            await DisplayAlertAsync("Couldn't reach the server", $"Is the API running at {ApiConfig.BaseUrl}?\n\n{ex.Message}", "OK");
             _busy = false; Render();
         }
     }

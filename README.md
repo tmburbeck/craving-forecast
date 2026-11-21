@@ -23,6 +23,8 @@ tests/CravingForecast.Tests  xUnit tests for the engine and the signal classifie
 
 ## Run it
 
+Requires the .NET 10 SDK (pinned in `global.json`).
+
 ```bash
 dotnet test tests/CravingForecast.Tests
 cd src/CravingForecast.Api && dotnet run           # http://localhost:5077
@@ -34,7 +36,7 @@ Then open `CravingForecast.Api.http` in Rider, Visual Studio or VS Code (REST Cl
 
 ```bash
 dotnet workload install maui
-dotnet build src/CravingForecast.Mobile -f net8.0-android    # emulator calls the API at 10.0.2.2:5077
+dotnet build src/CravingForecast.Mobile -f net10.0-android    # emulator calls the API at 10.0.2.2:5077
 ```
 
 - **iOS** needs a Mac with Xcode, plus an Apple developer account for the HealthKit entitlement.

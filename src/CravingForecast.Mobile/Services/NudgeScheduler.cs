@@ -1,5 +1,6 @@
 using CravingForecast.Core.Contracts;
 using Plugin.LocalNotification;
+using Plugin.LocalNotification.Core.Models;
 
 namespace CravingForecast.Mobile.Services;
 

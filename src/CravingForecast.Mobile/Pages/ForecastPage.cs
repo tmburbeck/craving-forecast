@@ -62,9 +62,9 @@ public sealed class ForecastPage : ContentPage
             _pending = await _api.GetPendingFeedbackAsync();
             await _nudges.RescheduleAsync(await _api.GetNudgesAsync(2));
             Render();
-            await DisplayAlert("", toast, "OK");
+            await DisplayAlertAsync("", toast, "OK");
         }
-        catch (Exception ex) { await DisplayAlert("Something went wrong", ex.Message, "OK"); }
+        catch (Exception ex) { await DisplayAlertAsync("Something went wrong", ex.Message, "OK"); }
     }
 
     private void Render()

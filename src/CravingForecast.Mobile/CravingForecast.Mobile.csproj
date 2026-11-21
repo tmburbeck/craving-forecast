@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-android</TargetFrameworks>
+    <TargetFrameworks>net10.0-android</TargetFrameworks>
     <!-- The iOS workload doesn't exist on Linux; listing it there breaks restore for every target. -->
-    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net8.0-ios</TargetFrameworks>
+    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>CravingForecast.Mobile</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -26,9 +26,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
-    <!-- Pinned: newer majors drop net8 (CalendarStore 4+ needs net9, 6+ needs net10). -->
-    <PackageReference Include="Plugin.LocalNotification" Version="11.1.4" />
-    <PackageReference Include="Plugin.Maui.CalendarStore" Version="3.0.1" />
+    <!-- Pinned to exact versions so builds are reproducible. -->
+    <PackageReference Include="Plugin.LocalNotification" Version="14.1.2" />
+    <PackageReference Include="Plugin.Maui.CalendarStore" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
