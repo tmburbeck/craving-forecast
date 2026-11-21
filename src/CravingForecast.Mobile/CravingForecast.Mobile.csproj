@@ -27,6 +27,8 @@
   <!-- Run as a plain .exe: no MSIX packaging or Developer Mode needed. -->
   <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
     <WindowsPackageType>None</WindowsPackageType>
+    <!-- Bundle the Windows App SDK runtime so the .exe starts without installing it separately. -->
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
   <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
