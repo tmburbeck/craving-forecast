@@ -5,7 +5,8 @@ using Azure.Communication.Email;
 
 namespace CravingForecast.Api;
 
-public sealed record OutgoingEmail(string To, string Subject, string Text, string Html);
+/// <summary>An email to send. <c>ReplyTo</c>, when set, is where a reply goes instead of the sender.</summary>
+public sealed record OutgoingEmail(string To, string Subject, string Text, string Html, string? ReplyTo = null);
 
 public interface IEmailSender
 {
@@ -18,9 +19,12 @@ public interface IEmailSender
 /// </summary>
 public sealed class AzureEmailSender(EmailClient client, string sender) : IEmailSender
 {
-    public async Task SendAsync(OutgoingEmail email, CancellationToken ct = default) =>
-        await client.SendAsync(WaitUntil.Started,
-            new EmailMessage(sender, email.To, new EmailContent(email.Subject) { PlainText = email.Text, Html = email.Html }), ct);
+    public async Task SendAsync(OutgoingEmail email, CancellationToken ct = default)
+    {
+        var message = new EmailMessage(sender, email.To, new EmailContent(email.Subject) { PlainText = email.Text, Html = email.Html });
+        if (email.ReplyTo is { } replyTo) message.ReplyTo.Add(new EmailAddress(replyTo));
+        await client.SendAsync(WaitUntil.Started, message, ct);
+    }
 }
 
 /// <summary>Writes each email to a folder as JSON instead of sending it. Used by the browser walk-through.</summary>
@@ -46,6 +50,28 @@ public sealed class NotConfiguredEmailSender(ILogger<NotConfiguredEmailSender> l
 
 public static class Emails
 {
+    /// <summary>A contact-form message, sent to the owner's own inbox; replying answers the person who wrote.</summary>
+    public static OutgoingEmail ContactMessage(string to, string from, string message, DateTimeOffset at)
+    {
+        var html = WebUtility.HtmlEncode(message).Replace("\n", "<br>");
+        return new OutgoingEmail(to, $"Salus contact form: message from {from}",
+            $"""
+             {from} wrote through the Salus contact form on {at:yyyy-MM-dd HH:mm} UTC:
+
+             {message}
+
+             Reply to this email to answer them.
+             """,
+            $"""
+             <div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#1E2A24;line-height:1.5">
+               <p style="margin:0 0 12px"><b>{WebUtility.HtmlEncode(from)}</b> wrote through the Salus contact form on {at:yyyy-MM-dd HH:mm} UTC:</p>
+               <blockquote style="margin:0 0 12px;padding:12px 16px;background:#F4EDE2;border-radius:12px">{html}</blockquote>
+               <p style="margin:0;color:#5E5448;font-size:13px">Reply to this email to answer them.</p>
+             </div>
+             """,
+            ReplyTo: from);
+    }
+
     public static OutgoingEmail PasswordReset(string to, string link)
     {
         var safe = WebUtility.HtmlEncode(link);

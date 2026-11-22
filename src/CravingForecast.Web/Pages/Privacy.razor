@@ -25,6 +25,7 @@
             <li><b>Daily signals:</b> your answer to "How did you sleep?" (well, okay or poorly). The phone and Windows apps can also send a summary of your sleep, whether you were active, and whether you had back-to-back meetings. Only these summaries leave your device, never your health records or calendar events.</li>
             <li><b>Your "Was this accurate?" answers</b>, and what Salus has learned from them about your danger zones.</li>
             <li><b>Notification details</b>, if you turn notifications on: the delivery address and keys your browser or phone gives Salus, and short records of which notifications were sent so none goes out twice. Those records are cleared after 2 days.</li>
+            <li><b>Messages you send through the <a href="contact">contact form</a>:</b> your email and message are forwarded by email to the person who runs Salus, to answer you. They aren't stored in the Salus database.</li>
         </ul>
         <p class="body">Salus doesn't ask for or keep what you eat, your weight, your location, your contacts or your photos.</p>
     </section>
@@ -34,7 +35,7 @@
         <ul class="body">
             <li>To build your hourly forecast and find your danger zones.</li>
             <li>To send the notifications you turned on: a heads-up before a danger zone, a check-in halfway through, and "Was this accurate?" after.</li>
-            <li>To email you a password reset link when you ask for one. Salus sends no other email.</li>
+            <li>To email you a password reset link when you ask for one, and to reply when you write through the contact form. Salus sends no other email.</li>
             <li>To keep your account safe, for example by locking it for 15 minutes after 5 wrong passwords.</li>
         </ul>
     </section>
@@ -44,7 +45,7 @@
         <p class="body">Salus uses a small number of services to run. Each one gets only what it needs for its job:</p>
         <ul class="body">
             <li><b>Microsoft Azure</b> hosts the app and its database in the United States (West US 3 region).</li>
-            <li><b>Azure Communication Services</b>, also Microsoft, sends password reset emails. It sees your email address and the reset link.</li>
+            <li><b>Azure Communication Services</b>, also Microsoft, sends password reset emails and forwards contact-form messages. It sees the email addresses and what's in those emails.</li>
             <li><b>Your browser or phone maker's notification service</b> (Apple, Google or Mozilla) delivers notifications. Each notification is encrypted before it leaves Salus, so that service can't read it.</li>
         </ul>
         <p class="body">Salus would share data otherwise only if the law required it.</p>
@@ -73,7 +74,7 @@
         <ul class="body">
             <li>Turn notifications on or off at any time in <b>Insights → Notifications</b>, or in your phone or browser settings.</li>
             <li>Skip any signal: the forecast still works from your quiz and check-ins.</li>
-            <li>Ask for a copy of your data, a correction, or deletion by emailing the address below. Salus answers within 30 days.</li>
+            <li>Ask for a copy of your data, a correction, or deletion through the <a href="contact">contact form</a>. Salus answers within 30 days.</li>
         </ul>
     </section>
 
@@ -87,7 +88,7 @@
 
     <section class="stack" style="--gap:8px">
         <h2 class="title">Children</h2>
-        <p class="body">Salus isn't meant for anyone under 16 and doesn't knowingly keep their data. If you think a child has signed up, email us and the account will be deleted.</p>
+        <p class="body">Salus isn't meant for anyone under 16 and doesn't knowingly keep their data. If you think a child has signed up, use the <a href="contact">contact form</a> and the account will be deleted.</p>
     </section>
 
     <section class="stack" style="--gap:8px">
@@ -95,15 +96,13 @@
         <p class="body">
             If this policy changes, the new version will appear here with a new date at the top.
         </p>
-        <p class="body">Questions or requests: <a href="mailto:@Contact">@Contact</a></p>
+        <p class="body">Questions or requests: use the <a href="contact">contact form</a>. You'll get a reply by email.</p>
     </section>
 </div>
 
 @code {
     // Keep this in step with what the app actually does: Storage.cs (what's stored), Program.cs (cookie, lockout),
-    // Push.cs (notifications and the 2-day records), Email.cs (reset emails only).
+    // Push.cs (notifications and the 2-day records), Email.cs (reset emails and contact-form messages only).
     private const string Effective = "November 22, 2026";
 
-    // TODO before merging: the dedicated contact address.
-    private const string Contact = "CONTACT-ADDRESS-NEEDED";
 }

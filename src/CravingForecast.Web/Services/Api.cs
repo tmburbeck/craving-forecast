@@ -55,6 +55,14 @@ public sealed class Api(HttpClient http)
 
     public async Task SignOutAsync() => await http.PostAsync("api/auth/logout", null);
 
+    /// <summary>Sends a contact-form message. Returns null when it's sent, or what went wrong.</summary>
+    public async Task<string?> SendContactAsync(string email, string message, string? website)
+    {
+        var res = await http.PostAsJsonAsync("api/contact", new ContactRequest(email, message, website), Json);
+        if (res.StatusCode == HttpStatusCode.TooManyRequests) return "You've sent a few messages already. Please try again in an hour.";
+        return res.IsSuccessStatusCode ? null : await ProblemAsync(res) ?? "Your message couldn't be sent. Please try again later.";
+    }
+
     /// <summary>Deletes the account for good. Returns null when it's done, or what went wrong.</summary>
     public async Task<string?> DeleteAccountAsync(string password)
     {

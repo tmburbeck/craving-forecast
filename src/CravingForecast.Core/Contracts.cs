@@ -63,6 +63,11 @@ public sealed record ResetPasswordRequest(string Email, string Code, string NewP
 /// <summary>Deleting an account asks for the password again, so a borrowed, signed-in phone can't do it.</summary>
 public sealed record DeleteAccountRequest(string Password);
 
+// ---------- Contact ----------
+
+/// <summary>A message from the contact form. <c>Website</c> is a hidden field only bots fill in.</summary>
+public sealed record ContactRequest(string Email, string Message, string? Website = null);
+
 // ---------- Web notifications ----------
 
 public sealed record PushKeys(string P256dh, string Auth);
