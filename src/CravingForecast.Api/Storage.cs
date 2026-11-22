@@ -29,6 +29,9 @@ public sealed class UserState
     /// <summary>Send times (UTC, round-trip format) of "Was this accurate?" reminders already pushed.</summary>
     public HashSet<string> RemindersSent { get; set; } = [];
 
+    /// <summary>Send times (UTC, round-trip format) of mid-zone "How are you doing?" prompts already pushed.</summary>
+    public HashSet<string> CheckInPromptsSent { get; set; } = [];
+
     public DailyContext? ContextFor(DateOnly date) => Contexts.GetValueOrDefault(Key(date));
     public static string Key(DateOnly d) => d.ToString("yyyy-MM-dd");
 }
