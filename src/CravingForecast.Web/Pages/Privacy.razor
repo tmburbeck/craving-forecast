@@ -1,0 +1,109 @@
+@page "/privacy"
+
+<PageTitle>Privacy policy · Salus</PageTitle>
+<div class="narrow stack policy" style="--gap:24px">
+    <div class="row between">
+        <Brand />
+        <a class="btn btn-plain" href="">Back to Salus</a>
+    </div>
+
+    <div class="stack" style="--gap:8px">
+        <h1 class="heading">Privacy policy</h1>
+        <p class="small muted">Effective @Effective</p>
+        <p class="body">
+            Salus keeps only what it needs to forecast your cravings and remind you about them. It has no ads,
+            no tracking and no analytics, and it never sells or shares your data for marketing.
+        </p>
+    </div>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">What Salus keeps</h2>
+        <ul class="body">
+            <li><b>Your account:</b> your email address and your password. The password is stored only as a salted hash, so no one can read it, including us.</li>
+            <li><b>Your quiz answers:</b> when you wake and sleep, your work schedule, your largest meal, what makes you graze, the meal you skip, your craving triggers, sweet or salty, and how you like to be nudged. Also your time zone.</li>
+            <li><b>Your check-ins:</b> the time, how hungry or tempted you felt (1 to 10), and any tags you picked.</li>
+            <li><b>Daily signals:</b> your answer to "How did you sleep?" (well, okay or poorly). The phone and Windows apps can also send a summary of your sleep, whether you were active, and whether you had back-to-back meetings. Only these summaries leave your device, never your health records or calendar events.</li>
+            <li><b>Your "Was this accurate?" answers</b>, and what Salus has learned from them about your danger zones.</li>
+            <li><b>Notification details</b>, if you turn notifications on: the delivery address and keys your browser or phone gives Salus, and short records of which notifications were sent so none goes out twice. Those records are cleared after 2 days.</li>
+        </ul>
+        <p class="body">Salus doesn't ask for or keep what you eat, your weight, your location, your contacts or your photos.</p>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">How it's used</h2>
+        <ul class="body">
+            <li>To build your hourly forecast and find your danger zones.</li>
+            <li>To send the notifications you turned on: a heads-up before a danger zone, a check-in halfway through, and "Was this accurate?" after.</li>
+            <li>To email you a password reset link when you ask for one. Salus sends no other email.</li>
+            <li>To keep your account safe, for example by locking it for 15 minutes after 5 wrong passwords.</li>
+        </ul>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">Who else handles it</h2>
+        <p class="body">Salus uses a small number of services to run. Each one gets only what it needs for its job:</p>
+        <ul class="body">
+            <li><b>Microsoft Azure</b> hosts the app and its database in the United States (West US 3 region).</li>
+            <li><b>Azure Communication Services</b>, also Microsoft, sends password reset emails. It sees your email address and the reset link.</li>
+            <li><b>Your browser or phone maker's notification service</b> (Apple, Google or Mozilla) delivers notifications. Each notification is encrypted before it leaves Salus, so that service can't read it.</li>
+        </ul>
+        <p class="body">Salus would share data otherwise only if the law required it.</p>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">Cookies and storage on your device</h2>
+        <ul class="body">
+            <li><b>One sign-in cookie</b> (<code>salus.auth</code>) keeps you signed in for up to 30 days, or until you sign out.</li>
+            <li>Two small notes in your browser's storage remember that you've seen the welcome slides and whether you dismissed the notifications card.</li>
+        </ul>
+        <p class="body">There are no advertising, analytics or third-party cookies.</p>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">How long it's kept, and deleting it</h2>
+        <p class="body">
+            Your data is kept while you have an account. You can delete your account at any time from
+            <b>Insights → Delete my account</b>. That erases your account and everything listed above from the database straight away,
+            and stops notifications on every device. It can't be undone.
+        </p>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">Your choices</h2>
+        <ul class="body">
+            <li>Turn notifications on or off at any time in <b>Insights → Notifications</b>, or in your phone or browser settings.</li>
+            <li>Skip any signal: the forecast still works from your quiz and check-ins.</li>
+            <li>Ask for a copy of your data, a correction, or deletion by emailing the address below. Salus answers within 30 days.</li>
+        </ul>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">Keeping it safe</h2>
+        <p class="body">
+            Everything travels over an encrypted (HTTPS) connection, passwords are stored only as salted hashes, and notifications are encrypted end to end.
+            No system is perfectly secure, but if something ever went wrong with your data, Salus would tell you.
+        </p>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">Children</h2>
+        <p class="body">Salus isn't meant for anyone under 16 and doesn't knowingly keep their data. If you think a child has signed up, email us and the account will be deleted.</p>
+    </section>
+
+    <section class="stack" style="--gap:8px">
+        <h2 class="title">Changes and contact</h2>
+        <p class="body">
+            If this policy changes, the new version will appear here with a new date at the top.
+        </p>
+        <p class="body">Questions or requests: <a href="mailto:@Contact">@Contact</a></p>
+    </section>
+</div>
+
+@code {
+    // Keep this in step with what the app actually does: Storage.cs (what's stored), Program.cs (cookie, lockout),
+    // Push.cs (notifications and the 2-day records), Email.cs (reset emails only).
+    private const string Effective = "November 22, 2026";
+
+    // TODO before merging: the dedicated contact address.
+    private const string Contact = "CONTACT-ADDRESS-NEEDED";
+}

@@ -169,6 +169,17 @@ try {
     await page.screenshot({ path: `${out}/help-phone.png`, fullPage: true });
   });
 
+  await step('the privacy policy opens from Help and names a contact', async () => {
+    await page.getByRole('link', { name: 'Privacy policy', exact: true }).click();
+    await page.waitForURL('**/privacy');
+    await page.getByRole('heading', { name: 'Privacy policy', level: 1 }).waitFor();
+    await page.getByRole('heading', { name: 'What Salus keeps' }).waitFor();
+    const contact = await page.locator('a[href^="mailto:"]').getAttribute('href');
+    if (!/^mailto:[^@\s]+@[^@\s]+\.[a-z]+$/i.test(contact ?? '')) throw new Error(`no real contact address on the privacy page: ${contact}`);
+    await page.screenshot({ path: `${out}/privacy-phone.png`, fullPage: true });
+    await page.goto(`${base}/insights`);
+  });
+
   await step('sign out, and a signed-out visit to Today goes to sign-in', async () => {
     await page.goto(`${base}/insights`);
     await page.getByRole('button', { name: 'Sign out' }).last().click();
