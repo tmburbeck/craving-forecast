@@ -26,6 +26,9 @@ public sealed class UserState
     /// <summary>Send times (UTC, round-trip format) of nudges already pushed, so each goes out once.</summary>
     public HashSet<string> NudgesSent { get; set; } = [];
 
+    /// <summary>Send times (UTC, round-trip format) of "Was this accurate?" reminders already pushed.</summary>
+    public HashSet<string> RemindersSent { get; set; } = [];
+
     public DailyContext? ContextFor(DateOnly date) => Contexts.GetValueOrDefault(Key(date));
     public static string Key(DateOnly d) => d.ToString("yyyy-MM-dd");
 }

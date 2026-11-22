@@ -32,7 +32,7 @@
 
 @code {
     // Answers describe what the app does today. Keep the numbers in step with the code:
-    // ZoneDetector.Threshold (55%), NudgePlanner.LeadTime (30 min), reset links (1 hour), lockout (5 tries, 15 min).
+    // ZoneDetector.Threshold (55%), NudgePlanner.LeadTime (30 min), FeedbackReminders.Delay (15 min) and QuietFromHour (11 PM), reset links (1 hour), lockout (5 tries, 15 min).
     private static readonly (string Section, (string Q, string A)[] Items)[] Sections =
     [
         ("Getting started",
@@ -60,7 +60,10 @@
         ("Notifications",
         [
             ("When will Salus notify me?",
-             "<p>Once, <b>30 minutes before each danger zone</b>, with a short message and one idea: a filling snack or a quick distraction, depending on your quiz answers. Tapping it opens Today. Salus doesn't send anything else.</p>"),
+             "<p>Twice for each danger zone, at most:</p>"
+           + "<ul><li><b>30 minutes before it starts</b>, with a short message and one idea: a filling snack or a quick distraction, depending on your quiz answers.</li>"
+           + "<li><b>15 minutes after it ends</b>, asking \"Was this accurate?\" Skipped if you've already answered, and never after 11 PM.</li></ul>"
+           + "<p>Tapping either one opens Today. Salus doesn't send anything else.</p>"),
             ("How do I turn notifications on?",
              "<p>Tap <b>Turn on notifications</b> on Today, or go to <b>Insights → Notifications</b>. Allow notifications when your phone or browser asks, then tap <b>Send a test</b> to check one arrives.</p>"),
             ("How do I get notifications on an iPhone or iPad?",

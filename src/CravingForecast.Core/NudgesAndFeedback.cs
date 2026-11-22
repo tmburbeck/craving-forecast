@@ -65,6 +65,41 @@ public static class NudgePlanner
     }
 }
 
+public sealed record FeedbackReminder(DateTimeOffset SendAt, DangerZone Zone, string Title, string Body);
+
+/// <summary>
+/// A gentle "Was this accurate?" after each zone ends. The answers are what make the forecast personal,
+/// and people answer far more often when asked while the afternoon is still fresh.
+/// </summary>
+public static class FeedbackReminders
+{
+    /// <summary>How long after a zone ends the reminder goes out.</summary>
+    public static readonly TimeSpan Delay = TimeSpan.FromMinutes(15);
+
+    /// <summary>No reminders at or after this local hour; a late-night ping isn't worth it.</summary>
+    public const int QuietFromHour = 23;
+
+    /// <summary>One reminder per zone that can be rated today (it ends before midnight), skipping late-night ones.</summary>
+    public static IReadOnlyList<FeedbackReminder> Plan(OnboardingProfile p, Forecast f)
+    {
+        var tz = p.TimeZone;
+        return f.Zones
+            // Matches when Today starts offering "Was this accurate?": the hour after the zone's last hour.
+            .Where(z => z.EndHour + 1 < 24)
+            .Select(z =>
+            {
+                var local = f.Date.ToDateTime(new TimeOnly(z.EndHour + 1, 0)) + Delay;
+                return (z, local);
+            })
+            .Where(x => x.local.Hour < QuietFromHour)
+            .Select(x => new FeedbackReminder(
+                new DateTimeOffset(x.local, tz.GetUtcOffset(x.local)), x.z,
+                $"How did {x.z.Label} go?",
+                "Was Salus right about this one? One tap helps it learn your days."))
+            .ToList();
+    }
+}
+
 public sealed record FeedbackResult(IReadOnlyDictionary<string, RuleStats> RuleStats, IReadOnlyList<CheckIn> NewCheckIns);
 
 /// <summary>
