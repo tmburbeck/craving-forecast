@@ -98,6 +98,24 @@ public sealed class AuthService
         finally { _refreshGate.Release(); }
     }
 
+    /// <summary>Deletes the account for good, then signs out. Returns null when it's done, or what went wrong.</summary>
+    public async Task<string?> DeleteAccountAsync(string password)
+    {
+        if (await GetAccessTokenAsync() is not { } token) return "You're signed out. Sign in and try again.";
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/me/delete")
+        {
+            Content = JsonContent.Create(new DeleteAccountRequest(password), options: _json)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        HttpResponseMessage res;
+        try { res = await _http.SendAsync(request); }
+        catch (Exception) { return "Couldn't reach Salus. Check your connection and try again."; }
+        if (res.StatusCode == HttpStatusCode.TooManyRequests) return "Too many attempts. Wait a minute and try again.";
+        if (!res.IsSuccessStatusCode) return await ProblemMessageAsync(res) ?? "Couldn't delete the account. Please try again.";
+        await SignOutAsync();
+        return null;
+    }
+
     public async Task SignOutAsync()
     {
         _tokens = null;

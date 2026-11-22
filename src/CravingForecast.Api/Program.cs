@@ -180,9 +180,39 @@ auth.MapPost("/logout", async (SignInManager<AppUser> signIn) =>
 }).RequireAuthorization();
 
 // Everything about a person lives under /api/me and is always the signed-in user's own data.
-var me = api.MapGroup("/me").RequireAuthorization();
+var me = api.MapGroup("/me").RequireAuthorization()
+    // A sign-in token stays valid until it expires, so check the account still exists: after it's
+    // deleted, an old token on another device is simply signed out.
+    .AddEndpointFilter(async (context, next) =>
+    {
+        var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var id = UserId(context.HttpContext.User);
+        return await db.Users.AnyAsync(u => u.Id == id) ? await next(context) : Results.Unauthorized();
+    });
 
 static Guid UserId(ClaimsPrincipal user) => Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+// Deletes the account and everything stored with it: forecast state, check-ins and notification subscriptions.
+// It can't be undone, so it asks for the password again.
+me.MapPost("/delete", async (DeleteAccountRequest r, ClaimsPrincipal user, UserManager<AppUser> users,
+    SignInManager<AppUser> signIn, AppDbContext db, ILogger<Program> log) =>
+{
+    if (await users.GetUserAsync(user) is not { } account) return Results.Unauthorized();
+    if (!await users.CheckPasswordAsync(account, r.Password ?? ""))
+        return Results.ValidationProblem(new Dictionary<string, string[]> { ["password"] = ["That password isn't right."] });
+
+    // The database removes these with the account too; deleting them first doesn't rely on that.
+    await db.PushSubscriptions.Where(s => s.UserId == account.Id).ExecuteDeleteAsync();
+    await db.States.Where(s => s.UserId == account.Id).ExecuteDeleteAsync();
+    var result = await users.DeleteAsync(account);
+    if (!result.Succeeded)
+    {
+        log.LogError("Couldn't delete an account: {Errors}", string.Join("; ", result.Errors.Select(e => e.Code)));
+        return Results.Problem("Couldn't delete the account. Please try again.");
+    }
+    await signIn.SignOutAsync();
+    return Results.NoContent();
+}).RequireRateLimiting("auth");
 
 me.MapGet("", async (ClaimsPrincipal user, IUserStore store) =>
     Results.Ok(new MeResponse(user.FindFirstValue(ClaimTypes.Email) ?? user.Identity?.Name ?? "", await store.GetAsync(UserId(user)) is not null)));

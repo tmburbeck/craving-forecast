@@ -55,6 +55,15 @@ public sealed class Api(HttpClient http)
 
     public async Task SignOutAsync() => await http.PostAsync("api/auth/logout", null);
 
+    /// <summary>Deletes the account for good. Returns null when it's done, or what went wrong.</summary>
+    public async Task<string?> DeleteAccountAsync(string password)
+    {
+        var res = await http.PostAsJsonAsync("api/me/delete", new DeleteAccountRequest(password), Json);
+        if (res.StatusCode == HttpStatusCode.Unauthorized) throw new SignedOutException();
+        if (res.StatusCode == HttpStatusCode.TooManyRequests) return TooMany;
+        return res.IsSuccessStatusCode ? null : await ProblemAsync(res) ?? "Couldn't delete the account. Please try again.";
+    }
+
     /// <returns>Null when nobody is signed in.</returns>
     public async Task<MeResponse?> GetMeAsync()
     {

@@ -60,6 +60,9 @@ public sealed record TokenResponse(string TokenType, string AccessToken, long Ex
 public sealed record ForgotPasswordRequest(string Email);
 public sealed record ResetPasswordRequest(string Email, string Code, string NewPassword);
 
+/// <summary>Deleting an account asks for the password again, so a borrowed, signed-in phone can't do it.</summary>
+public sealed record DeleteAccountRequest(string Password);
+
 // ---------- Web notifications ----------
 
 public sealed record PushKeys(string P256dh, string Auth);
