@@ -4,6 +4,7 @@
 @inject AppState State
 @inject Api Api
 @inject NavigationManager Nav
+@inject PushService Push
 
 <PageTitle>Insights · Salus</PageTitle>
 @if (State.Forecast is { } f)
@@ -79,6 +80,8 @@
                     <p class="tiny muted">Rules below 40% trust are phased out. Your "Was this accurate?" answers move these.</p>
                 </section>
 
+                <NotificationsCard Settings="true" />
+
                 <button class="btn btn-plain muted" style="align-self:center" @onclick="SignOut">Sign out</button>
             </div>
         </div>
@@ -90,6 +93,8 @@
 
     private async Task SignOut()
     {
+        // Stop this device getting the old account's nudges.
+        try { await Push.DisableAsync(); } catch (Exception) { }
         await Api.SignOutAsync();
         State.Reset();
         Nav.NavigateTo("signin");

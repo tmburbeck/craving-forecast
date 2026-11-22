@@ -81,7 +81,8 @@ Everything under `/api/me` needs a signed-in user (the apps send `Authorization:
 
 ## Design notes
 
-- **Nudges are local notifications** scheduled on the device from `/nudges`, so they fire when the app is closed and no APNs or FCM server is needed. The app reschedules after each sync, check-in or feedback answer. iOS allows 64 pending notifications per app, which is plenty for 2 days.
+- **Nudges reach the web app as Web Push notifications.** The API keeps each device's subscription and, once a minute, pushes nudges that are due (catching up on any missed in the last 20 minutes, each sent once). It uses the current standard (RFC 8291 `aes128gcm`, RFC 8292 VAPID), which Apple requires; on iPhone and iPad, notifications work once Salus is added to the Home Screen (iOS 16.4+). The VAPID keys are made on first use and stored in the database. On Azure's free plan the app visits its own address every 10 minutes (`Push:KeepAwakeUrl`) so it doesn't sleep through a nudge; a paid plan with Always On makes that unnecessary.
+- **In the MAUI app, nudges are local notifications** scheduled on the device from `/nudges`, so they fire when the app is closed and no APNs or FCM server is needed. The app reschedules after each sync, check-in or feedback answer. iOS allows 64 pending notifications per app, which is plenty for 2 days.
 - **Health data stays coarse.** The phone sends only `Poor / Ok / Good` and `Low / Normal / High`, never raw sleep or step counts. Calendar event details never leave the device; only a back-to-back yes/no is sent.
 - **Health Connect (Android)** is stubbed. Android users get the morning sleep tap instead. See `HealthConnectSignals.cs` for wiring it up.
 - **Accounts** use ASP.NET Core Identity: passwords of 10+ characters, lockout after 5 failed attempts, and 10 sign-in requests a minute per address. Token keys are kept in the database, so a restart doesn't sign anyone out.

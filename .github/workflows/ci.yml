@@ -61,7 +61,7 @@ jobs:
         run: |
           dotnet publish src/CravingForecast.Api -c Release -o "$RUNNER_TEMP/app"
           cd "$RUNNER_TEMP/app"
-          ConnectionStrings__Salus="Data Source=$RUNNER_TEMP/salus.db" Auth__RequestsPerMinute=1000 \
+          ConnectionStrings__Salus="Data Source=$RUNNER_TEMP/salus.db" Auth__RequestsPerMinute=1000 Push__KeepAwakeUrl= \
             ASPNETCORE_URLS=http://127.0.0.1:5080 nohup dotnet CravingForecast.Api.dll > "$RUNNER_TEMP/api.log" 2>&1 &
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:5080/api/health && exit 0; sleep 1; done
           echo "The API didn't start." >&2; cat "$RUNNER_TEMP/api.log"; exit 1

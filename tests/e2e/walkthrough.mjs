@@ -22,7 +22,8 @@ const offset = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 
 const clock = new Date(`${today}T14:00:00${offset}`);
 
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch();
+// Full Chromium (not the lighter headless shell, which always denies notifications), still headless.
+const browser = await chromium.launch({ channel: 'chromium' });
 const errors = [];
 let failed = false;
 
@@ -50,7 +51,9 @@ const email = `walkthrough-${Date.now()}@example.com`;
 const password = 'correct horse battery';
 
 try {
-  const ctx = await browser.newContext({ viewport: sizes.phone, ...context });
+  // Headless Chromium reports notifications as blocked unless they're granted up front, and the app
+  // (correctly) hides its offer for blocked browsers, so grant them as a person saying yes would.
+  const ctx = await browser.newContext({ viewport: sizes.phone, ...context, permissions: ['notifications'] });
   const page = await ctx.newPage();
   await page.clock.setFixedTime(clock);
   watch(page);
@@ -102,6 +105,26 @@ try {
     await page.getByRole('button', { name: 'Log it' }).click();
     await page.waitForURL('**/today');
     await page.getByText('Logged. Your forecast just updated.').waitFor();
+  });
+
+  await step('notifications are offered, and the worker shows a pushed nudge', async () => {
+    await page.getByRole('button', { name: 'Turn on notifications' }).waitFor();
+    // Deliver a push straight to the service worker, the way a push service would, and check it's shown.
+    const cdp = await ctx.newCDPSession(page);
+    const registered = new Promise(resolve => cdp.on('ServiceWorker.workerRegistrationUpdated', e => {
+      const r = e.registrations.find(x => x.scopeURL.startsWith(base) && !x.isDeleted);
+      if (r) resolve(r.registrationId);
+    }));
+    await cdp.send('ServiceWorker.enable');
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    const registrationId = await registered;
+    await cdp.send('ServiceWorker.deliverPushMessage', {
+      origin: new URL(base).origin, registrationId,
+      data: JSON.stringify({ title: 'Afternoon slump in 30 minutes', body: 'Greek yogurt with berries now.', url: '/today', tag: 'walkthrough' })
+    });
+    await page.waitForFunction(async () =>
+      (await (await navigator.serviceWorker.ready).getNotifications()).some(n => n.title === 'Afternoon slump in 30 minutes'), null, { timeout: 10000 });
+    await cdp.detach();
   });
 
   await step('Today and Insights at phone, iPad and desktop sizes', async () => {

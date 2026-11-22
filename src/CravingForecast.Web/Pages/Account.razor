@@ -3,6 +3,7 @@
 @inject Api Api
 @inject AppState State
 @inject NavigationManager Nav
+@inject PushService Push
 
 <PageTitle>@(_signingIn ? "Sign in" : "Create account") · Salus</PageTitle>
 <div class="narrow stack" style="--gap:22px">
@@ -65,6 +66,7 @@
             if (_error is not null) return;
             _password = "";
             State.Reset();
+            await Push.ReattachAsync();
             var me = await State.RefreshMeAsync();
             Nav.NavigateTo(me is { HasProfile: true } ? "today" : "quiz");
         }

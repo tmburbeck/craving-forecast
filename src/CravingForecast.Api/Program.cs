@@ -21,6 +21,13 @@ builder.Services.AddDbContext<AppDbContext>((sp, o) =>
     o.UseSqlite(sp.GetRequiredService<IConfiguration>().GetConnectionString("Salus") ?? "Data Source=salus.db"));
 builder.Services.AddScoped<IUserStore, DbUserStore>();
 
+// ---------- Web notifications: keys, sender, and the once-a-minute nudge dispatcher ----------
+builder.Services.AddSingleton<VapidKeyStore>();
+builder.Services.AddSingleton<IPushSender, WebPushSender>();
+builder.Services.AddSingleton<NudgeDispatcher>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<NudgeDispatcher>());
+builder.Services.AddHostedService<KeepAwake>();
+
 // ---------- Accounts: email + password, bearer tokens for the apps, cookies for a future web front end ----------
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<AppUser>(o =>
@@ -215,6 +222,54 @@ me.MapGet("/nudges", async (int? days, ClaimsPrincipal user, IUserStore store, F
     await store.GetAsync(UserId(user)) is { } u
         ? Results.Ok(svc.UpcomingNudges(u, days ?? 2).Select(Map.Nudge))
         : Results.NotFound());
+
+// ---------- Web notifications ----------
+// The public half of the key browsers need to subscribe; safe to share.
+api.MapGet("/push/public-key", async (VapidKeyStore keys) => Results.Ok(new PushPublicKeyResponse((await keys.GetAsync()).Public)));
+
+me.MapPost("/push/subscriptions", async (PushSubscriptionRequest r, ClaimsPrincipal user, AppDbContext db) =>
+{
+    if (!Uri.TryCreate(r.Endpoint, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps
+        || string.IsNullOrWhiteSpace(r.Keys?.P256dh) || string.IsNullOrWhiteSpace(r.Keys?.Auth))
+        return Results.ValidationProblem(new Dictionary<string, string[]> { ["endpoint"] = ["That isn't a valid push subscription."] });
+
+    var id = UserId(user);
+    var row = await db.PushSubscriptions.FirstOrDefaultAsync(s => s.Endpoint == r.Endpoint);
+    if (row is null)
+        db.PushSubscriptions.Add(new PushSubscriptionRow { UserId = id, Endpoint = r.Endpoint, P256dh = r.Keys.P256dh, Auth = r.Keys.Auth, CreatedUtc = DateTime.UtcNow });
+    else
+    {
+        // The same browser, now signed in as this person: it gets their nudges, not the last account's.
+        row.UserId = id;
+        row.P256dh = r.Keys.P256dh;
+        row.Auth = r.Keys.Auth;
+        row.CreatedUtc = DateTime.UtcNow;
+    }
+    await db.SaveChangesAsync();
+
+    // Keep each person's 10 most recent devices.
+    var stale = await db.PushSubscriptions.Where(s => s.UserId == id).OrderByDescending(s => s.CreatedUtc).Skip(10).Select(s => s.Id).ToListAsync();
+    if (stale.Count > 0) await db.PushSubscriptions.Where(s => stale.Contains(s.Id)).ExecuteDeleteAsync();
+    return Results.NoContent();
+});
+
+me.MapPost("/push/unsubscribe", async (PushUnsubscribeRequest r, ClaimsPrincipal user, AppDbContext db) =>
+{
+    var id = UserId(user);
+    await db.PushSubscriptions.Where(s => s.UserId == id && s.Endpoint == r.Endpoint).ExecuteDeleteAsync();
+    return Results.NoContent();
+});
+
+me.MapPost("/push/test", async (ClaimsPrincipal user, AppDbContext db, IPushSender sender) =>
+{
+    var id = UserId(user);
+    var sent = 0;
+    foreach (var s in await db.PushSubscriptions.Where(s => s.UserId == id).ToListAsync())
+        if (await sender.SendAsync(s, new PushMessage("Notifications are on",
+                "Salus will give you a heads-up 30 minutes before each danger zone.", "/today", "salus-test")) == PushResult.Sent)
+            sent++;
+    return Results.Ok(new PushTestResponse(sent));
+});
 
 // Unknown API paths are a plain 404; every other path belongs to the web app's client-side router.
 app.MapFallback("/api/{**rest}", () => Results.NotFound());
