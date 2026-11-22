@@ -144,20 +144,21 @@ public sealed class NudgeDispatcher(IServiceScopeFactory scopes, ForecastService
             var state = await store.GetAsync(devices.Key);
             if (state is null || Due(state).Count == 0) continue;
 
-            // Claim the due nudges under the user's lock, then send outside it.
+            // Claim what's due under the user's lock, then send outside it.
             var claimed = await store.UpdateAsync(devices.Key, u =>
             {
                 var due = Due(u);
-                foreach (var n in due) u.NudgesSent.Add(Key(n));
+                foreach (var d in due) (d.IsReminder ? u.RemindersSent : u.NudgesSent).Add(d.Key);
                 var cutoff = svc.Now.AddDays(-2);
                 u.NudgesSent.RemoveWhere(k => DateTimeOffset.TryParse(k, out var t) && t < cutoff);
+                u.RemindersSent.RemoveWhere(k => DateTimeOffset.TryParse(k, out var t) && t < cutoff);
                 return due;
             }) ?? [];
 
-            foreach (var n in claimed)
+            foreach (var d in claimed)
                 foreach (var device in devices)
                 {
-                    var result = await sender.SendAsync(device, new PushMessage(n.Title, n.Body, "/today", $"nudge-{Key(n)}"), ct);
+                    var result = await sender.SendAsync(device, d.Message, ct);
                     if (result == PushResult.Sent) delivered++;
                     if (result == PushResult.Gone) gone.Add(device.Id);
                 }
@@ -168,19 +169,34 @@ public sealed class NudgeDispatcher(IServiceScopeFactory scopes, ForecastService
         return delivered;
     }
 
-    /// <summary>Today's and yesterday's nudges (a zone just after midnight is planned from yesterday) that are due and unsent.</summary>
-    private List<Nudge> Due(UserState u)
+    private sealed record DueMessage(string Key, bool IsReminder, PushMessage Message);
+
+    /// <summary>
+    /// Nudges and "Was this accurate?" reminders that are due and unsent. Nudges look at yesterday too (a zone
+    /// just after midnight is planned from yesterday); reminders only cover today's zones, which is all Today
+    /// asks about, and are skipped once the zone has been rated.
+    /// </summary>
+    private List<DueMessage> Due(UserState u)
     {
         var now = svc.Now;
         var today = svc.Today(u.Profile);
-        return new[] { today.AddDays(-1), today }
+        bool InWindow(DateTimeOffset at) => at <= now && at > now - CatchUp;
+
+        var nudges = new[] { today.AddDays(-1), today }
             .SelectMany(d => NudgePlanner.Plan(u.Profile, svc.ForecastFor(u, d)))
-            .Where(n => n.SendAt <= now && n.SendAt > now - CatchUp && !u.NudgesSent.Contains(Key(n)))
-            .GroupBy(Key).Select(g => g.First())
-            .ToList();
+            .Where(n => InWindow(n.SendAt) && !u.NudgesSent.Contains(Key(n.SendAt)))
+            .GroupBy(n => Key(n.SendAt)).Select(g => g.First())
+            .Select(n => new DueMessage(Key(n.SendAt), false, new PushMessage(n.Title, n.Body, "/today", $"nudge-{Key(n.SendAt)}")));
+
+        var reminders = FeedbackReminders.Plan(u.Profile, svc.ForecastFor(u, today))
+            .Where(r => InWindow(r.SendAt) && !u.RemindersSent.Contains(Key(r.SendAt)))
+            .Where(r => !u.FeedbackGiven.Contains($"{UserState.Key(today)}@{r.Zone.StartHour}"))
+            .Select(r => new DueMessage(Key(r.SendAt), true, new PushMessage(r.Title, r.Body, "/today", $"feedback-{Key(r.SendAt)}")));
+
+        return nudges.Concat(reminders).ToList();
     }
 
-    private static string Key(Nudge n) => n.SendAt.UtcDateTime.ToString("O");
+    private static string Key(DateTimeOffset at) => at.UtcDateTime.ToString("O");
 }
 
 /// <summary>
