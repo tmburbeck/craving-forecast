@@ -44,7 +44,9 @@ function watch(page) {
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => {
     // The app asks "is anyone signed in?" before sign-up; the browser logs that expected 401.
-    if (m.type() === 'error' && !m.text().includes('401')) errors.push(m.text());
+    // The delete step tries a wrong password first on purpose; the browser logs that expected 400.
+    const expected400 = m.text().includes('400') && (m.location()?.url ?? '').includes('/api/me/delete');
+    if (m.type() === 'error' && !m.text().includes('401') && !expected400) errors.push(m.text());
   });
 }
 
@@ -213,6 +215,27 @@ try {
     await page.getByLabel('Password').fill(password);
     await page.getByRole('button', { name: 'Sign in' }).click();
     await page.waitForURL('**/today');
+  });
+
+  await step('delete my account: needs the password, then erases it for good', async () => {
+    await page.goto(`${base}/insights`);
+    await page.getByRole('link', { name: 'Delete my account' }).click();
+    await page.waitForURL('**/delete-account');
+    await page.getByRole('heading', { name: 'Delete your account?' }).waitFor();
+    await page.getByLabel('Enter your password to confirm').fill('not my password');
+    await page.getByRole('button', { name: 'Delete my account' }).click();
+    await page.getByText("That password isn't right.").waitFor();
+    await page.screenshot({ path: join(out, 'delete-phone.png'), fullPage: true });
+    await page.getByLabel('Enter your password to confirm').fill(password);
+    await page.getByRole('button', { name: 'Delete my account' }).click();
+    await page.getByRole('heading', { name: 'Your account is deleted' }).waitFor();
+
+    await page.goto(`${base}/today`);
+    await page.waitForURL('**/signin');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByText("That email and password don't match.").waitFor();
   });
 
   if (errors.length) {

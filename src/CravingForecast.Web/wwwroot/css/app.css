@@ -183,3 +183,8 @@ a { color: var(--green-text); }
 .faq .answer p + p, .faq .answer p + ol { margin-top: 8px; }
 .faq .answer ol { margin: 8px 0 0; padding-left: 20px; }
 .faq .answer li + li { margin-top: 4px; }
+
+/* Delete account */
+.delete-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.btn-delete { background: var(--danger); }
+.btn-delete:hover { background: #74492A; }

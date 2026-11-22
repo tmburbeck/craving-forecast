@@ -34,7 +34,8 @@ public sealed class InsightsView : ContentView
             UI.Text("Rules below 40% trust are phased out. Your \"Was this accurate?\" answers move these.", 12, Weight.Regular, Theme.Muted),
             UI.Plain("Help & FAQ", async () => await Launcher.OpenAsync(new Uri(new Uri(ApiConfig.BaseUrl), "help")))
                 .Also(b => b.HorizontalOptions = LayoutOptions.Center),
-            UI.Plain("Sign out", SignOut, Theme.Muted).Also(b => b.HorizontalOptions = LayoutOptions.Center));
+            UI.Plain("Sign out", SignOut, Theme.Muted).Also(b => b.HorizontalOptions = LayoutOptions.Center),
+            UI.Plain("Delete my account", DeleteAccount, Theme.Muted).Also(b => { b.HorizontalOptions = LayoutOptions.Center; b.FontSize = 13; }));
         page.Padding = new Thickness(20, 16, 20, 28);
         Content = new ScrollView { Content = page };
     }
@@ -46,6 +47,27 @@ public sealed class InsightsView : ContentView
             return;
         _nudges.CancelAll();
         await _auth.SignOutAsync();
+    }
+
+    private async void DeleteAccount()
+    {
+        var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+        if (page is null) return;
+        if (!await page.DisplayAlertAsync("Delete your account?",
+                "This erases your account, check-ins, quiz answers and everything Salus learned about you, for good. It can't be undone.",
+                "Continue", "Keep my account"))
+            return;
+        var password = await page.DisplayPromptAsync("Confirm with your password", "Enter your password to delete your account.",
+            "Delete my account", "Cancel", keyboard: Keyboard.Default);
+        if (string.IsNullOrEmpty(password)) return;
+
+        if (await _auth.DeleteAccountAsync(password) is { } error)
+        {
+            await page.DisplayAlertAsync("Couldn't delete the account", error, "OK");
+            return;
+        }
+        _nudges.CancelAll();
+        await page.DisplayAlertAsync("Your account is deleted", "Everything Salus kept about you is gone. Take good care of yourself.", "OK");
     }
 
     private static View Section(string title, View content) => UI.Stack(10, UI.Caps(title), content);

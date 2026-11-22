@@ -1,0 +1,70 @@
+@page "/delete-account"
+@inject Api Api
+@inject AppState State
+@inject PushService Push
+@inject NavigationManager Nav
+
+<PageTitle>Delete your account · Salus</PageTitle>
+<div class="narrow stack" style="--gap:22px">
+    <Brand />
+    @if (!_deleted)
+    {
+        <div class="stack" style="--gap:8px">
+            <h1 class="heading">Delete your account?</h1>
+            <p class="body">This removes your account and everything Salus keeps with it, for good:</p>
+            <ul class="body delete-list">
+                <li>your sign-in and email address</li>
+                <li>your quiz answers, check-ins and "Was this accurate?" ratings</li>
+                <li>what Salus has learned about your danger zones</li>
+                <li>notifications on every device</li>
+            </ul>
+            <p class="body">It can't be undone. You can sign up again later, but you'd start from day one.</p>
+        </div>
+        <form class="stack" style="--gap:18px" @onsubmit="Delete" novalidate>
+            <div class="field">
+                <label for="password">Enter your password to confirm</label>
+                <input id="password" type="password" autocomplete="current-password" @bind="_password" required />
+            </div>
+            @if (_error is not null) { <p class="error" role="alert">@_error</p> }
+            <button class="btn btn-primary btn-delete" type="submit" disabled="@_busy">@(_busy ? "Deleting…" : "Delete my account")</button>
+        </form>
+        <a class="btn btn-plain" href="insights">Keep my account</a>
+    }
+    else
+    {
+        <div class="stack" style="--gap:8px" role="status">
+            <h1 class="heading">Your account is deleted</h1>
+            <p class="body">Everything Salus kept about you is gone. Thank you for giving it a try, and take good care of yourself.</p>
+        </div>
+        <a class="btn btn-primary" href="">Back to the start</a>
+    }
+</div>
+
+@code {
+    private string _password = "";
+    private string? _error;
+    private bool _busy;
+    private bool _deleted;
+
+    private async Task Delete()
+    {
+        if (_busy) return;
+        if (_password.Length == 0) { _error = "Enter your password."; return; }
+        _busy = true;
+        _error = null;
+        try
+        {
+            // Unsubscribe this browser first, while still signed in.
+            try { await Push.DisableAsync(); } catch (Exception) { }
+            _error = await Api.DeleteAccountAsync(_password);
+            if (_error is null)
+            {
+                State.Reset();
+                _deleted = true;
+            }
+        }
+        catch (SignedOutException) { Nav.NavigateTo("signin"); }
+        catch (Exception) { _error = "Couldn't reach Salus. Check your connection and try again."; }
+        finally { _busy = false; }
+    }
+}
