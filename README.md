@@ -70,6 +70,8 @@ Everything under `/api/me` needs a signed-in user (the apps send `Authorization:
 | POST | `/api/auth/login` | Sign in → `accessToken` (1 hour) + `refreshToken` |
 | POST | `/api/auth/refresh` | Swap a refresh token for new tokens |
 | POST | `/api/auth/logout` | End a web (cookie) session |
+| POST | `/api/auth/forgot` | Email a password-reset link (same answer whether or not the account exists) |
+| POST | `/api/auth/reset` | Set a new password with the emailed code |
 | GET | `/api/me` | Signed-in email, and whether the quiz is done |
 | POST | `/api/me/profile` | Onboarding quiz → day-1 forecast (once per account) |
 | GET | `/api/me/forecast?date=` | Hourly risk, zones, archetypes, factors, rule trust, next nudge |
@@ -86,6 +88,7 @@ Everything under `/api/me` needs a signed-in user (the apps send `Authorization:
 - **Health data stays coarse.** The phone sends only `Poor / Ok / Good` and `Low / Normal / High`, never raw sleep or step counts. Calendar event details never leave the device; only a back-to-back yes/no is sent.
 - **Health Connect (Android)** is stubbed. Android users get the morning sleep tap instead. See `HealthConnectSignals.cs` for wiring it up.
 - **Accounts** use ASP.NET Core Identity: passwords of 10+ characters, lockout after 5 failed attempts, and 10 sign-in requests a minute per address. Token keys are kept in the database, so a restart doesn't sign anyone out.
+- **Password reset** (`/api/auth/forgot`, `/api/auth/reset`) emails a link that works once, for an hour, and also clears a lockout. The answer never reveals whether an account exists, and the link always uses `App:BaseUrl`, never the request's Host header. Email goes through Azure Communication Services when `Email:ConnectionString` and `Email:Sender` are set as app settings; with `Email:PickupDirectory` it's written to a folder instead (the walk-through reads it from there); with neither, nothing is sent.
 - **Storage** is one SQLite file (`ConnectionStrings:Salus`, default `salus.db`) holding accounts and each user's forecast state as JSON. Schema changes go through EF Core migrations, applied at startup. Moving to Postgres means swapping the EF provider.
 
 ## Next steps
