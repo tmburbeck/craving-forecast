@@ -14,6 +14,7 @@ public sealed class Api(HttpClient http)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
     private const string TooMany = "Too many attempts. Wait a minute and try again.";
+    private const string LockedOut = "Too many wrong passwords, so this account is locked for 15 minutes to keep it safe. Try again after that.";
 
     // ---------- Accounts ----------
 
@@ -21,7 +22,8 @@ public sealed class Api(HttpClient http)
     public async Task<string?> SignInAsync(string email, string password)
     {
         var res = await http.PostAsJsonAsync("api/auth/login?useCookies=true", new AuthRequest(email, password), Json);
-        if (res.StatusCode == HttpStatusCode.Unauthorized) return "That email and password don't match.";
+        if (res.StatusCode == HttpStatusCode.Unauthorized)
+            return await ProblemAsync(res) == "LockedOut" ? LockedOut : "That email and password don't match.";
         if (res.StatusCode == HttpStatusCode.TooManyRequests) return TooMany;
         return res.IsSuccessStatusCode ? null : await ProblemAsync(res) ?? "Couldn't sign in.";
     }

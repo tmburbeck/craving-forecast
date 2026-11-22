@@ -151,6 +151,23 @@ try {
     await page.waitForURL('**/signin');
   });
 
+  await step('switch between sign-in and create-account', async () => {
+    await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
+    await page.getByRole('button', { name: 'New here? Create an account' }).click();
+    await page.getByRole('heading', { name: 'Create your account' }).waitFor();
+    await page.waitForURL('**/signup');
+    await page.getByRole('button', { name: 'Already have an account? Sign in' }).click();
+    await page.getByRole('heading', { name: 'Welcome back' }).waitFor();
+    await page.waitForURL('**/signin');
+  });
+
+  await step('a wrong password is refused with a clear message', async () => {
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill('not the right password');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByText("That email and password don't match.").waitFor();
+  });
+
   await step('sign back in goes straight to Today', async () => {
     await page.getByLabel('Email').fill(email);
     await page.getByLabel('Password').fill(password);
