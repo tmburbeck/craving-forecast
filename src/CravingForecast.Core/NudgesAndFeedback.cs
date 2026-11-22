@@ -65,7 +65,8 @@ public static class NudgePlanner
     }
 }
 
-public sealed record FeedbackReminder(DateTimeOffset SendAt, DangerZone Zone, string Title, string Body);
+/// <summary>A notification tied to one danger zone, sent at a set time in the person's own time zone.</summary>
+public sealed record ZonePrompt(DateTimeOffset SendAt, DangerZone Zone, string Title, string Body);
 
 /// <summary>
 /// A gentle "Was this accurate?" after each zone ends. The answers are what make the forecast personal,
@@ -80,7 +81,7 @@ public static class FeedbackReminders
     public const int QuietFromHour = 23;
 
     /// <summary>One reminder per zone that can be rated today (it ends before midnight), skipping late-night ones.</summary>
-    public static IReadOnlyList<FeedbackReminder> Plan(OnboardingProfile p, Forecast f)
+    public static IReadOnlyList<ZonePrompt> Plan(OnboardingProfile p, Forecast f)
     {
         var tz = p.TimeZone;
         return f.Zones
@@ -92,10 +93,40 @@ public static class FeedbackReminders
                 return (z, local);
             })
             .Where(x => x.local.Hour < QuietFromHour)
-            .Select(x => new FeedbackReminder(
+            .Select(x => new ZonePrompt(
                 new DateTimeOffset(x.local, tz.GetUtcOffset(x.local)), x.z,
                 $"How did {x.z.Label} go?",
                 "Was Salus right about this one? One tap helps it learn your days."))
+            .ToList();
+    }
+}
+
+/// <summary>
+/// A gentle "How are you doing?" halfway through a longer danger zone, when the pull is strongest
+/// and a check-in tells Salus the most. One-hour zones are skipped: the heads-up before and the
+/// "Was this accurate?" after are already close together.
+/// </summary>
+public static class MidZoneCheckIns
+{
+    /// <summary>Zones shorter than this many hours get no mid-zone prompt.</summary>
+    public const int MinHours = 2;
+
+    public static IReadOnlyList<ZonePrompt> Plan(OnboardingProfile p, Forecast f)
+    {
+        var tz = p.TimeZone;
+        return f.Zones
+            .Where(z => z.StartHour < 24 && z.EndHour - z.StartHour + 1 >= MinHours)
+            .Select(z =>
+            {
+                var hours = z.EndHour - z.StartHour + 1;
+                var local = f.Date.ToDateTime(new TimeOnly(z.StartHour, 0)).AddMinutes(hours * 30);
+                return (z, local);
+            })
+            .Where(x => x.local.Date == f.Date.ToDateTime(TimeOnly.MinValue) && x.local.Hour < FeedbackReminders.QuietFromHour)
+            .Select(x => new ZonePrompt(
+                new DateTimeOffset(x.local, tz.GetUtcOffset(x.local)), x.z,
+                $"Halfway through {x.z.Label}",
+                "How are you doing? A quick check-in helps Salus learn this window."))
             .ToList();
     }
 }

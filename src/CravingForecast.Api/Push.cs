@@ -148,10 +148,11 @@ public sealed class NudgeDispatcher(IServiceScopeFactory scopes, ForecastService
             var claimed = await store.UpdateAsync(devices.Key, u =>
             {
                 var due = Due(u);
-                foreach (var d in due) (d.IsReminder ? u.RemindersSent : u.NudgesSent).Add(d.Key);
+                foreach (var d in due) SentSet(u, d.Kind).Add(d.Key);
                 var cutoff = svc.Now.AddDays(-2);
                 u.NudgesSent.RemoveWhere(k => DateTimeOffset.TryParse(k, out var t) && t < cutoff);
                 u.RemindersSent.RemoveWhere(k => DateTimeOffset.TryParse(k, out var t) && t < cutoff);
+                u.CheckInPromptsSent.RemoveWhere(k => DateTimeOffset.TryParse(k, out var t) && t < cutoff);
                 return due;
             }) ?? [];
 
@@ -169,10 +170,19 @@ public sealed class NudgeDispatcher(IServiceScopeFactory scopes, ForecastService
         return delivered;
     }
 
-    private sealed record DueMessage(string Key, bool IsReminder, PushMessage Message);
+    private enum Kind { Nudge, CheckInPrompt, Reminder }
+
+    private sealed record DueMessage(string Key, Kind Kind, PushMessage Message);
+
+    private static HashSet<string> SentSet(UserState u, Kind kind) => kind switch
+    {
+        Kind.Nudge => u.NudgesSent,
+        Kind.CheckInPrompt => u.CheckInPromptsSent,
+        _ => u.RemindersSent
+    };
 
     /// <summary>
-    /// Nudges and "Was this accurate?" reminders that are due and unsent. Nudges look at yesterday too (a zone
+    /// Nudges, mid-zone check-in prompts and "Was this accurate?" reminders that are due and unsent. Nudges look at yesterday too (a zone
     /// just after midnight is planned from yesterday); reminders only cover today's zones, which is all Today
     /// asks about, and are skipped once the zone has been rated.
     /// </summary>
@@ -186,14 +196,26 @@ public sealed class NudgeDispatcher(IServiceScopeFactory scopes, ForecastService
             .SelectMany(d => NudgePlanner.Plan(u.Profile, svc.ForecastFor(u, d)))
             .Where(n => InWindow(n.SendAt) && !u.NudgesSent.Contains(Key(n.SendAt)))
             .GroupBy(n => Key(n.SendAt)).Select(g => g.First())
-            .Select(n => new DueMessage(Key(n.SendAt), false, new PushMessage(n.Title, n.Body, "/today", $"nudge-{Key(n.SendAt)}")));
+            .Select(n => new DueMessage(Key(n.SendAt), Kind.Nudge, new PushMessage(n.Title, n.Body, "/today", $"nudge-{Key(n.SendAt)}")));
 
         var reminders = FeedbackReminders.Plan(u.Profile, svc.ForecastFor(u, today))
             .Where(r => InWindow(r.SendAt) && !u.RemindersSent.Contains(Key(r.SendAt)))
             .Where(r => !u.FeedbackGiven.Contains($"{UserState.Key(today)}@{r.Zone.StartHour}"))
-            .Select(r => new DueMessage(Key(r.SendAt), true, new PushMessage(r.Title, r.Body, "/today", $"feedback-{Key(r.SendAt)}")));
+            .Select(r => new DueMessage(Key(r.SendAt), Kind.Reminder, new PushMessage(r.Title, r.Body, "/today", $"feedback-{Key(r.SendAt)}")));
 
-        return nudges.Concat(reminders).ToList();
+        // Halfway through a longer zone, unless they've already checked in since it started.
+        var prompts = MidZoneCheckIns.Plan(u.Profile, svc.ForecastFor(u, today))
+            .Where(p => InWindow(p.SendAt) && !u.CheckInPromptsSent.Contains(Key(p.SendAt)))
+            .Where(p => !u.CheckIns.Any(c => c.Source == CheckInSource.User && c.At >= ZoneStart(p) && c.At <= now))
+            .Select(p => new DueMessage(Key(p.SendAt), Kind.CheckInPrompt, new PushMessage(p.Title, p.Body, "/checkin", $"checkin-{Key(p.SendAt)}")));
+
+        DateTimeOffset ZoneStart(ZonePrompt p)
+        {
+            var local = today.ToDateTime(new TimeOnly(p.Zone.StartHour, 0));
+            return new DateTimeOffset(local, u.Profile.TimeZone.GetUtcOffset(local));
+        }
+
+        return nudges.Concat(prompts).Concat(reminders).ToList();
     }
 
     private static string Key(DateTimeOffset at) => at.UtcDateTime.ToString("O");

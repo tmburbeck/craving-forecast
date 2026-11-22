@@ -112,6 +112,15 @@ try {
     await page.getByText('Logged. Your forecast just updated.').waitFor();
   });
 
+  await step('a mid-zone notification opens the check-in straight away', async () => {
+    // Tapping a "Halfway through" notification opens /checkin on a fresh load of the app.
+    await page.goto(`${base}/checkin`);
+    await page.getByRole('button', { name: 'Level 4' }).click();
+    await page.getByRole('button', { name: 'Log it' }).click();
+    await page.waitForURL('**/today');
+    await page.getByText('Logged. Your forecast just updated.').waitFor();
+  });
+
   await step('notifications are offered, and the worker shows a pushed nudge', async () => {
     await page.getByRole('button', { name: 'Turn on notifications' }).waitFor();
     // Deliver a push straight to the service worker, the way a push service would, and check it's shown.
