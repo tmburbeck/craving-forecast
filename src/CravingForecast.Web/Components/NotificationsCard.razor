@@ -1,0 +1,117 @@
+@inject PushService Push
+@inject IJSRuntime JS
+
+@* Prompt = the one-time offer on Today. Settings = the always-there section on Insights. *@
+@if (_status is { } s)
+{
+    @if (!Settings)
+    {
+        @if (!_dismissed && (s.CanAsk || s.NeedsHomeScreen))
+        {
+            <section class="card soft stack" style="--gap:12px" aria-labelledby="notify-title">
+                <div class="row" style="--gap:10px;align-items:flex-start">
+                    <span class="tile" style="width:36px;height:36px;border-radius:12px"><Icon Name="bell" Size="18" /></span>
+                    <div class="stack" style="--gap:4px">
+                        <h2 class="title" id="notify-title">Get a heads-up before each danger zone</h2>
+                        @if (s.NeedsHomeScreen)
+                        {
+                            <p class="small body" style="font-size:14px">On iPhone and iPad, add Salus to your Home Screen first: tap <b>Share</b>, then <b>Add to Home Screen</b>, and open Salus from there.</p>
+                        }
+                        else
+                        {
+                            <p class="small body" style="font-size:14px">Salus sends one notification 30 minutes before each danger zone, with an idea that fits.</p>
+                        }
+                    </div>
+                </div>
+                @if (_message is not null) { <p class="small" role="status" style="font-weight:600;color:var(--green-text)">@_message</p> }
+                <div class="wrap">
+                    @if (s.CanAsk) { <button class="btn btn-primary" style="width:auto;min-height:44px;font-size:14px" disabled="@_busy" @onclick="Enable">Turn on notifications</button> }
+                    <button class="btn btn-plain muted" @onclick="Dismiss">Not now</button>
+                </div>
+            </section>
+        }
+    }
+    else
+    {
+        <section class="stack" style="--gap:10px" aria-labelledby="notify-settings">
+            <h2 class="caps" id="notify-settings">Notifications</h2>
+            <div class="card compact stack" style="--gap:10px">
+                <p style="font-size:14px">@Describe(s)</p>
+                @if (_message is not null) { <p class="small" role="status" style="font-weight:600;color:var(--green-text)">@_message</p> }
+                <div class="wrap">
+                    @if (s.Subscribed)
+                    {
+                        <button class="pill" disabled="@_busy" @onclick="Test">Send a test</button>
+                        <button class="pill" disabled="@_busy" @onclick="Disable">Turn off</button>
+                    }
+                    else if (s.CanAsk)
+                    {
+                        <button class="pill" aria-pressed="false" disabled="@_busy" @onclick="Enable">Turn on notifications</button>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+}
+
+@code {
+    /// <summary>False: the dismissible offer on Today. True: the settings section on Insights.</summary>
+    [Parameter] public bool Settings { get; set; }
+
+    private const string DismissKey = "salus.notifyPromptDismissed";
+    private PushStatus? _status;
+    private bool _dismissed;
+    private bool _busy;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _status = await Push.StatusAsync();
+            if (!Settings) _dismissed = await JS.InvokeAsync<string?>("localStorage.getItem", DismissKey) is not null;
+        }
+        catch (JSException) { _status = new PushStatus(false, false, false, "unsupported", false); }
+    }
+
+    private static string Describe(PushStatus s) =>
+        s.Subscribed ? "On for this device. You'll get a heads-up 30 minutes before each danger zone."
+        : s.NeedsHomeScreen ? "On iPhone and iPad, add Salus to your Home Screen (Share, then Add to Home Screen) and open it from there to turn notifications on."
+        : s.Blocked ? "Blocked for this site in your browser's settings. Allow notifications for Salus there, then come back."
+        : !s.Supported ? "This browser can't show notifications."
+        : "Off on this device.";
+
+    private async Task Enable() => await Run(async () =>
+    {
+        var on = await Push.EnableAsync();
+        _message = on ? "Notifications are on. Send a test any time from Insights." : null;
+        if (!on) _status = await Push.StatusAsync();
+    });
+
+    private async Task Disable() => await Run(async () => { await Push.DisableAsync(); _message = "Notifications are off for this device."; });
+
+    private async Task Test() => await Run(async () =>
+    {
+        var sent = await Push.SendTestAsync();
+        _message = sent > 0 ? "Test sent. It should arrive in a few seconds." : "Nothing was sent. Try turning notifications off and on again.";
+    });
+
+    private async Task Run(Func<Task> action)
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            await action();
+            _status = await Push.StatusAsync();
+        }
+        catch (Exception) { _message = "That didn't work. Check your connection and try again."; }
+        finally { _busy = false; }
+    }
+
+    private async Task Dismiss()
+    {
+        _dismissed = true;
+        try { await JS.InvokeVoidAsync("localStorage.setItem", DismissKey, "1"); } catch (JSException) { }
+    }
+}

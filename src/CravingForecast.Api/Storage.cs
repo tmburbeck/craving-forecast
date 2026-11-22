@@ -23,6 +23,9 @@ public sealed class UserState
     /// <summary>"yyyy-MM-dd@startHour" for zones the user already rated.</summary>
     public HashSet<string> FeedbackGiven { get; set; } = [];
 
+    /// <summary>Send times (UTC, round-trip format) of nudges already pushed, so each goes out once.</summary>
+    public HashSet<string> NudgesSent { get; set; } = [];
+
     public DailyContext? ContextFor(DateOnly date) => Contexts.GetValueOrDefault(Key(date));
     public static string Key(DateOnly d) => d.ToString("yyyy-MM-dd");
 }
@@ -47,12 +50,32 @@ public sealed class StoredState
     public DateTime UpdatedUtc { get; set; }
 }
 
+/// <summary>One browser or device that has said yes to notifications.</summary>
+public sealed class PushSubscriptionRow
+{
+    public int Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Endpoint { get; set; } = "";
+    public string P256dh { get; set; } = "";
+    public string Auth { get; set; } = "";
+    public DateTime CreatedUtc { get; set; }
+}
+
+/// <summary>Small values the server makes once and keeps, such as the keys that sign notifications.</summary>
+public sealed class AppSetting
+{
+    public string Key { get; set; } = "";
+    public string Value { get; set; } = "";
+}
+
 /// <summary>Accounts (Identity), forecast state and the data-protection keys that sign sign-in tokens.</summary>
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>(options), IDataProtectionKeyContext
 {
     public DbSet<StoredState> States => Set<StoredState>();
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
+    public DbSet<PushSubscriptionRow> PushSubscriptions => Set<PushSubscriptionRow>();
+    public DbSet<AppSetting> Settings => Set<AppSetting>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -62,6 +85,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasKey(s => s.UserId);
             e.HasOne<AppUser>().WithOne().HasForeignKey<StoredState>(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         });
+        builder.Entity<PushSubscriptionRow>(e =>
+        {
+            e.HasIndex(s => s.Endpoint).IsUnique();
+            e.HasOne<AppUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+        builder.Entity<AppSetting>().HasKey(s => s.Key);
     }
 }
 

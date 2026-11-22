@@ -57,3 +57,11 @@ public sealed record MeResponse(string Email, bool HasProfile);
 public sealed record AuthRequest(string Email, string Password);
 public sealed record RefreshRequest(string RefreshToken);
 public sealed record TokenResponse(string TokenType, string AccessToken, long ExpiresIn, string RefreshToken);
+
+// ---------- Web notifications ----------
+
+public sealed record PushKeys(string P256dh, string Auth);
+public sealed record PushSubscriptionRequest(string Endpoint, PushKeys Keys);
+public sealed record PushUnsubscribeRequest(string Endpoint);
+public sealed record PushPublicKeyResponse(string PublicKey);
+public sealed record PushTestResponse(int Sent);

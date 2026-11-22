@@ -3,6 +3,7 @@
 @inject AppState State
 @inject Api Api
 @inject NavigationManager Nav
+@inject PushService Push
 
 @* The signed-in shell: sidebar on desktops, bottom bar with the check-in button on phones and tablets. *@
 @if (_ready)
@@ -71,6 +72,8 @@ else
 
     private async Task SignOut()
     {
+        // Stop this device getting the old account's nudges.
+        try { await Push.DisableAsync(); } catch (Exception) { }
         await Api.SignOutAsync();
         State.Reset();
         Nav.NavigateTo("signin");

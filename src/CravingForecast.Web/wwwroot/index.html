@@ -45,6 +45,10 @@
                 h < 5 ? "Hello, night owl" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
         })();
     </script>
+    <script>
+        // The notifications worker; registering it early means it's ready the moment someone turns notifications on.
+        if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(function () { });
+    </script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 

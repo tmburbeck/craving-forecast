@@ -104,6 +104,27 @@ try {
     await page.getByText('Logged. Your forecast just updated.').waitFor();
   });
 
+  await step('notifications are offered, and the worker shows a pushed nudge', async () => {
+    await page.getByRole('button', { name: 'Turn on notifications' }).waitFor();
+    await ctx.grantPermissions(['notifications'], { origin: base });
+    // Deliver a push straight to the service worker, the way a push service would, and check it's shown.
+    const cdp = await ctx.newCDPSession(page);
+    const registered = new Promise(resolve => cdp.on('ServiceWorker.workerRegistrationUpdated', e => {
+      const r = e.registrations.find(x => x.scopeURL.startsWith(base) && !x.isDeleted);
+      if (r) resolve(r.registrationId);
+    }));
+    await cdp.send('ServiceWorker.enable');
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    const registrationId = await registered;
+    await cdp.send('ServiceWorker.deliverPushMessage', {
+      origin: new URL(base).origin, registrationId,
+      data: JSON.stringify({ title: 'Afternoon slump in 30 minutes', body: 'Greek yogurt with berries now.', url: '/today', tag: 'walkthrough' })
+    });
+    await page.waitForFunction(async () =>
+      (await (await navigator.serviceWorker.ready).getNotifications()).some(n => n.title === 'Afternoon slump in 30 minutes'), null, { timeout: 10000 });
+    await cdp.detach();
+  });
+
   await step('Today and Insights at phone, iPad and desktop sizes', async () => {
     const state = await ctx.storageState();
     for (const [size, viewport] of Object.entries(sizes)) {

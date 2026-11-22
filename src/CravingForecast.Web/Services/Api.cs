@@ -55,6 +55,22 @@ public sealed class Api(HttpClient http)
     public Task<ForecastDto> CheckInAsync(CheckInRequest r) => SendAsync<ForecastDto>(HttpMethod.Post, "api/me/checkins", r);
     public Task<ForecastDto> SendFeedbackAsync(FeedbackRequest r) => SendAsync<ForecastDto>(HttpMethod.Post, "api/me/feedback", r);
 
+    // ---------- Notifications ----------
+
+    public async Task<string> GetPushPublicKeyAsync() => (await GetAsync<PushPublicKeyResponse>("api/push/public-key")).PublicKey;
+
+    public async Task SubscribePushAsync(PushSubscriptionRequest r) => Check(await http.PostAsJsonAsync("api/me/push/subscriptions", r, Json));
+
+    public async Task UnsubscribePushAsync(string endpoint) => Check(await http.PostAsJsonAsync("api/me/push/unsubscribe", new PushUnsubscribeRequest(endpoint), Json));
+
+    public async Task<int> SendTestPushAsync() => (await ReadAsync<PushTestResponse>(await http.PostAsync("api/me/push/test", null))).Sent;
+
+    private static void Check(HttpResponseMessage res)
+    {
+        if (res.StatusCode == HttpStatusCode.Unauthorized) throw new SignedOutException();
+        res.EnsureSuccessStatusCode();
+    }
+
     private async Task<T> GetAsync<T>(string url) => await ReadAsync<T>(await http.GetAsync(url));
 
     private async Task<T> SendAsync<T>(HttpMethod method, string url, object body) =>
