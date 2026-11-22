@@ -169,6 +169,27 @@ try {
     await page.screenshot({ path: `${out}/help-phone.png`, fullPage: true });
   });
 
+  await step('the privacy policy opens from Help, and its contact form sends a message', async () => {
+    await page.getByRole('link', { name: 'Privacy policy', exact: true }).click();
+    await page.waitForURL('**/privacy');
+    await page.getByRole('heading', { name: 'Privacy policy', level: 1 }).waitFor();
+    await page.getByRole('heading', { name: 'What Salus keeps' }).waitFor();
+    await page.screenshot({ path: `${out}/privacy-phone.png`, fullPage: true });
+
+    await page.getByRole('link', { name: 'contact form' }).last().click();
+    await page.waitForURL('**/contact');
+    await page.getByLabel('Your email').fill(email);
+    await page.getByLabel('Message').fill('Hello from the walk-through. Can I get a copy of my data?');
+    await page.getByRole('button', { name: 'Send message' }).click();
+    await page.getByRole('heading', { name: 'Message sent' }).waitFor();
+    if (mailDir) {
+      const mails = await Promise.all((await readdir(mailDir)).filter(f => f.endsWith('.json'))
+        .map(async f => JSON.parse(await readFile(join(mailDir, f), 'utf8'))));
+      const sent = mails.find(m => m.Subject.startsWith('Salus contact form') && m.ReplyTo === email);
+      if (!sent || !sent.Text.includes('copy of my data')) throw new Error('the contact message was not forwarded');
+    }
+  });
+
   await step('sign out, and a signed-out visit to Today goes to sign-in', async () => {
     await page.goto(`${base}/insights`);
     await page.getByRole('button', { name: 'Sign out' }).last().click();

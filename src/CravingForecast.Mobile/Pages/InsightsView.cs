@@ -34,6 +34,8 @@ public sealed class InsightsView : ContentView
             UI.Text("Rules below 40% trust are phased out. Your \"Was this accurate?\" answers move these.", 12, Weight.Regular, Theme.Muted),
             UI.Plain("Help & FAQ", async () => await Launcher.OpenAsync(new Uri(new Uri(ApiConfig.BaseUrl), "help")))
                 .Also(b => b.HorizontalOptions = LayoutOptions.Center),
+            UI.Plain("Privacy policy", async () => await Launcher.OpenAsync(new Uri(new Uri(ApiConfig.BaseUrl), "privacy")), Theme.Muted)
+                .Also(b => { b.HorizontalOptions = LayoutOptions.Center; b.FontSize = 13; }),
             UI.Plain("Sign out", SignOut, Theme.Muted).Also(b => b.HorizontalOptions = LayoutOptions.Center),
             UI.Plain("Delete my account", DeleteAccount, Theme.Muted).Also(b => { b.HorizontalOptions = LayoutOptions.Center; b.FontSize = 13; }));
         page.Padding = new Thickness(20, 16, 20, 28);

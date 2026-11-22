@@ -89,6 +89,14 @@ builder.Services.AddRateLimiter(o =>
             PermitLimit = ctx.RequestServices.GetRequiredService<IConfiguration>().GetValue("Auth:RequestsPerMinute", 10),
             Window = TimeSpan.FromMinutes(1)
         }));
+    // The contact form: a few messages an hour from any one address keeps spam out of the owner's inbox.
+    o.AddPolicy("contact", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = ctx.RequestServices.GetRequiredService<IConfiguration>().GetValue("Contact:MessagesPerHour", 3),
+            Window = TimeSpan.FromHours(1)
+        }));
 });
 
 var app = builder.Build();
@@ -171,6 +179,37 @@ auth.MapPost("/reset", async (ResetPasswordRequest r, UserManager<AppUser> users
     }
     return Results.NoContent();
 }).RequireRateLimiting("auth");
+
+// ---------- Contact form ----------
+// Messages go to Contact:ForwardTo, an Azure app setting holding the owner's own inbox, so no address is ever
+// shown on the site. Replying to the email answers the person who wrote.
+api.MapPost("/contact", async (ContactRequest r, IEmailSender email, IConfiguration config, ForecastService svc, ILogger<Program> log) =>
+{
+    // Bots fill in every field, including the hidden one; act as if it worked so they move on.
+    if (!string.IsNullOrEmpty(r.Website)) return Results.NoContent();
+
+    var from = (r.Email ?? "").Trim();
+    var message = (r.Message ?? "").Trim();
+    var errors = new Dictionary<string, string[]>();
+    if (from.Length > 254 || !System.Net.Mail.MailAddress.TryCreate(from, out var parsed) || parsed.Address != from)
+        errors["email"] = ["Enter the email address you'd like a reply at."];
+    if (message.Length < 10) errors["message"] = ["Write a little more so we can help."];
+    else if (message.Length > 4000) errors["message"] = ["Keep it under 4,000 characters."];
+    if (errors.Count > 0) return Results.ValidationProblem(errors);
+
+    if (config["Contact:ForwardTo"] is not { Length: > 0 } to)
+    {
+        log.LogError("A contact-form message couldn't be delivered: Contact:ForwardTo isn't set.");
+        return Results.Problem("The contact form isn't working right now. Please try again later.", statusCode: 503);
+    }
+    try { await email.SendAsync(Emails.ContactMessage(to, from, message, svc.Now)); }
+    catch (Exception e)
+    {
+        log.LogError(e, "Couldn't send a contact-form message");
+        return Results.Problem("Your message couldn't be sent. Please try again later.", statusCode: 503);
+    }
+    return Results.NoContent();
+}).RequireRateLimiting("contact");
 
 // Ends a web (cookie) session. The apps forget their tokens instead.
 auth.MapPost("/logout", async (SignInManager<AppUser> signIn) =>

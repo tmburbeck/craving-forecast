@@ -1,0 +1,68 @@
+@page "/contact"
+@inject Api Api
+
+<PageTitle>Contact Salus</PageTitle>
+<div class="narrow stack" style="--gap:22px">
+    <div class="row between">
+        <Brand />
+        <a class="btn btn-plain" href="">Back to Salus</a>
+    </div>
+    @if (!_sent)
+    {
+        <div class="stack" style="--gap:8px">
+            <h1 class="heading">Contact Salus</h1>
+            <p class="body">Questions, problems, or a request about your data, like a copy or a correction. You'll get a reply by email.</p>
+        </div>
+        <form class="stack" style="--gap:18px" @onsubmit="Send" novalidate>
+            <div class="field">
+                <label for="email">Your email</label>
+                <input id="email" type="email" autocomplete="email" inputmode="email" @bind="_email" placeholder="you@example.com" required />
+            </div>
+            <div class="field">
+                <label for="message">Message</label>
+                <textarea id="message" rows="6" maxlength="4000" @bind="_message" required></textarea>
+            </div>
+            @* Hidden from people; bots fill it in, and the server quietly drops those messages. *@
+            <div class="hp" aria-hidden="true">
+                <label for="website">Website</label>
+                <input id="website" type="text" tabindex="-1" autocomplete="off" @bind="_website" />
+            </div>
+            @if (_error is not null) { <p class="error" role="alert">@_error</p> }
+            <button class="btn btn-primary" type="submit" disabled="@_busy">@(_busy ? "Sending…" : "Send message")</button>
+        </form>
+        <p class="small muted">Your message and email go only to the person who runs Salus, to answer you. See the <a href="privacy">privacy policy</a>.</p>
+    }
+    else
+    {
+        <div class="stack" style="--gap:8px" role="status">
+            <h1 class="heading">Message sent</h1>
+            <p class="body">Thanks for writing. You'll get a reply at <b>@_email.Trim()</b>, usually within a few days.</p>
+        </div>
+        <a class="btn btn-primary" href="">Back to Salus</a>
+    }
+</div>
+
+@code {
+    private string _email = "";
+    private string _message = "";
+    private string? _website;
+    private string? _error;
+    private bool _busy;
+    private bool _sent;
+
+    private async Task Send()
+    {
+        if (_busy) return;
+        if (!_email.Contains('@')) { _error = "Enter the email address you'd like a reply at."; return; }
+        if (_message.Trim().Length < 10) { _error = "Write a little more so we can help."; return; }
+        _busy = true;
+        _error = null;
+        try
+        {
+            _error = await Api.SendContactAsync(_email.Trim(), _message.Trim(), _website);
+            _sent = _error is null;
+        }
+        catch (Exception) { _error = "Couldn't reach Salus. Check your connection and try again."; }
+        finally { _busy = false; }
+    }
+}
