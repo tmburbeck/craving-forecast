@@ -16,15 +16,27 @@ public sealed record PushStatus(bool Supported, bool Ios, bool Installed, string
 public sealed class PushService(IJSRuntime js, Api api) : IAsyncDisposable
 {
     private Task<IJSObjectReference>? _module;
+    private string? _publicKey;
     private Task<IJSObjectReference> Module => _module ??= js.InvokeAsync<IJSObjectReference>("import", "./js/push.js").AsTask();
 
     public async Task<PushStatus> StatusAsync() => await (await Module).InvokeAsync<PushStatus>("status");
 
+    /// <summary>
+    /// Fetches the server's key ahead of time. Safari only shows the permission prompt when it's asked for
+    /// straight after a tap, so <see cref="EnableAsync"/> mustn't wait on the network first.
+    /// </summary>
+    public async Task PrepareAsync()
+    {
+        await Module;
+        _publicKey ??= await api.GetPushPublicKeyAsync();
+    }
+
     /// <returns>True when notifications are now on.</returns>
     public async Task<bool> EnableAsync()
     {
-        var key = await api.GetPushPublicKeyAsync();
-        var sub = await (await Module).InvokeAsync<PushSubscriptionRequest?>("enable", key);
+        var module = await Module;
+        var key = _publicKey ??= await api.GetPushPublicKeyAsync();
+        var sub = await module.InvokeAsync<PushSubscriptionRequest?>("enable", key);
         if (sub is null) return false;
         await api.SubscribePushAsync(sub);
         return true;

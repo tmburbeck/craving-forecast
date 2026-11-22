@@ -22,7 +22,8 @@ const offset = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 
 const clock = new Date(`${today}T14:00:00${offset}`);
 
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch();
+// Full Chromium (not the lighter headless shell, which always denies notifications), still headless.
+const browser = await chromium.launch({ channel: 'chromium' });
 const errors = [];
 let failed = false;
 
@@ -50,7 +51,9 @@ const email = `walkthrough-${Date.now()}@example.com`;
 const password = 'correct horse battery';
 
 try {
-  const ctx = await browser.newContext({ viewport: sizes.phone, ...context });
+  // Headless Chromium reports notifications as blocked unless they're granted up front, and the app
+  // (correctly) hides its offer for blocked browsers, so grant them as a person saying yes would.
+  const ctx = await browser.newContext({ viewport: sizes.phone, ...context, permissions: ['notifications'] });
   const page = await ctx.newPage();
   await page.clock.setFixedTime(clock);
   watch(page);
@@ -106,7 +109,6 @@ try {
 
   await step('notifications are offered, and the worker shows a pushed nudge', async () => {
     await page.getByRole('button', { name: 'Turn on notifications' }).waitFor();
-    await ctx.grantPermissions(['notifications'], { origin: base });
     // Deliver a push straight to the service worker, the way a push service would, and check it's shown.
     const cdp = await ctx.newCDPSession(page);
     const registered = new Promise(resolve => cdp.on('ServiceWorker.workerRegistrationUpdated', e => {

@@ -26,6 +26,7 @@ builder.Services.AddSingleton<VapidKeyStore>();
 builder.Services.AddSingleton<IPushSender, WebPushSender>();
 builder.Services.AddSingleton<NudgeDispatcher>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<NudgeDispatcher>());
+builder.Services.AddHostedService<KeepAwake>();
 
 // ---------- Accounts: email + password, bearer tokens for the apps, cookies for a future web front end ----------
 builder.Services.AddAuthorization();

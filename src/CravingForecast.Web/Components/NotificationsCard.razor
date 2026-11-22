@@ -70,6 +70,7 @@
         {
             _status = await Push.StatusAsync();
             if (!Settings) _dismissed = await JS.InvokeAsync<string?>("localStorage.getItem", DismissKey) is not null;
+            if (_status.CanAsk) await Push.PrepareAsync();
         }
         catch (JSException) { _status = new PushStatus(false, false, false, "unsupported", false); }
     }

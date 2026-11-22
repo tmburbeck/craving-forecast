@@ -182,3 +182,24 @@ public sealed class NudgeDispatcher(IServiceScopeFactory scopes, ForecastService
 
     private static string Key(Nudge n) => n.SendAt.UtcDateTime.ToString("O");
 }
+
+/// <summary>
+/// Azure's free plan puts the app to sleep after about 20 minutes without visits, and a sleeping app can't send
+/// nudges. When Push:KeepAwakeUrl is set (production only), the app visits its own public address every
+/// 10 minutes, which resets that timer. A paid plan with "Always On" makes this unnecessary.
+/// </summary>
+public sealed class KeepAwake(IConfiguration config, ILogger<KeepAwake> log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var url = config["Push:KeepAwakeUrl"];
+        if (string.IsNullOrWhiteSpace(url)) return;
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(10));
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            try { (await http.GetAsync(new Uri(new Uri(url), "/api/health"), stoppingToken)).Dispose(); }
+            catch (Exception e) when (!stoppingToken.IsCancellationRequested) { log.LogWarning(e, "Keep-awake visit failed"); }
+        }
+    }
+}
