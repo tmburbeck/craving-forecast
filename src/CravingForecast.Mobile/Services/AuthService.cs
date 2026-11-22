@@ -52,7 +52,10 @@ public sealed class AuthService
     public async Task<string?> SignInAsync(string email, string password)
     {
         var res = await _http.PostAsJsonAsync("api/auth/login", new AuthRequest(email, password), _json);
-        if (res.StatusCode == HttpStatusCode.Unauthorized) return "That email and password don't match.";
+        if (res.StatusCode == HttpStatusCode.Unauthorized)
+            return await ProblemMessageAsync(res) == "LockedOut"
+                ? "Too many wrong passwords, so this account is locked for 15 minutes to keep it safe. Try again after that."
+                : "That email and password don't match.";
         if (res.StatusCode == HttpStatusCode.TooManyRequests) return TooMany;
         if (!res.IsSuccessStatusCode) return await ProblemMessageAsync(res) ?? "Couldn't sign in.";
         await SaveAsync((await res.Content.ReadFromJsonAsync<TokenResponse>(_json))!);

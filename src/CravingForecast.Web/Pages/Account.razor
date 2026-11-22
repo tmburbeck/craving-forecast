@@ -4,6 +4,7 @@
 @inject AppState State
 @inject NavigationManager Nav
 @inject PushService Push
+@implements IDisposable
 
 <PageTitle>@(_signingIn ? "Sign in" : "Create account") · Salus</PageTitle>
 <div class="narrow stack" style="--gap:22px">
@@ -33,9 +34,9 @@
         </button>
     </form>
 
-    <a class="btn btn-plain" href="@(_signingIn ? "signup" : "signin")">
+    <button class="btn btn-plain" type="button" @onclick="SwitchMode">
         @(_signingIn ? "New here? Create an account" : "Already have an account? Sign in")
-    </a>
+    </button>
 </div>
 
 @code {
@@ -45,11 +46,33 @@
     private string? _error;
     private bool _busy;
 
-    protected override void OnParametersSet()
+    // /signin and /signup are the same screen, and Blazor doesn't redraw a screen when only its address
+    // changes, so the mode follows the address by hand (including the browser's back button).
+    protected override void OnInitialized()
     {
-        _signingIn = Nav.Uri.Contains("/signin", StringComparison.OrdinalIgnoreCase);
-        _error = null;
+        _signingIn = IsSignInAddress(Nav.Uri);
+        Nav.LocationChanged += OnLocationChanged;
     }
+
+    private static bool IsSignInAddress(string uri) => uri.Contains("/signin", StringComparison.OrdinalIgnoreCase);
+
+    private void SwitchMode()
+    {
+        _signingIn = !_signingIn;
+        _error = null;
+        Nav.NavigateTo(_signingIn ? "signin" : "signup", replace: true);
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        var signingIn = IsSignInAddress(e.Location);
+        if (signingIn == _signingIn) return;
+        _signingIn = signingIn;
+        _error = null;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
 
     private async Task Submit()
     {
