@@ -15,6 +15,24 @@ Taken automatically by the web walk-through in CI on every merge to `main`; pull
 | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/today-phone.png?raw=true" width="220" alt="Today on a phone"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/today-ipad.png?raw=true" width="280" alt="Today on an iPad"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/today-desktop.png?raw=true" width="400" alt="Today on a desktop"> |
 | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/insights-phone.png?raw=true" width="220" alt="Insights on a phone"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/insights-ipad.png?raw=true" width="280" alt="Insights on an iPad"> | <img src="https://github.com/tmburbeck/craving-forecast/blob/screenshots/main/insights-desktop.png?raw=true" width="400" alt="Insights on a desktop"> |
 
+## How this was built
+
+I built Salus with [Claude Code](https://claude.com/claude-code), Anthropic's AI coding agent, as an exercise in directing an AI through real software work, from a first prototype to a live, tested product. I made the product calls and the AI did the hands-on engineering. Every change came to me as a pull request, and I reviewed and merged each one myself.
+
+**What I decided**
+- **The product:** the forecasting idea, the name (Salus, the Roman goddess of health), the calm wood-and-green look, and a longer, warmer welcome screen.
+- **The priorities:** a responsive web app instead of an Apple Developer account, password reset first (the most common support headache), then account deletion, notifications that ask for feedback, and a privacy policy.
+- **The trade-offs:** a contact form instead of publishing an email address, no custom domain for a portfolio project, and leaving harmless test data rather than building admin tools to remove it.
+- **The cloud setup:** creating the Azure resources and keeping every secret in Azure and GitHub settings, never in the code or the chat.
+
+**What the AI did, with me reviewing**
+- Wrote the code across four projects (engine, API, web app, phone and Windows app) and moved everything to .NET 10.
+- Wrote the tests (72 unit and API tests) and a browser walk-through that signs up, takes the quiz, checks in, resets a password and deletes the account on every change.
+- Set up CI that builds the web, Android and Windows apps, posts phone, iPad and desktop screenshots on each pull request, and deploys to Azure on merge.
+- Diagnosed production problems, like a deploy that served Azure's placeholder page (two runtime config files) and iPhone notifications failing (Apple needs a newer encryption standard).
+
+**Timeline:** about three days of sessions in November 2026, in 16 merged pull requests. The pull request history shows each step, with the AI's description of what changed and why.
+
 ## How the prediction works
 
 | Layer | When it leads | What it does |
