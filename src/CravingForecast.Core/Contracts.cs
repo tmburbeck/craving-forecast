@@ -57,6 +57,8 @@ public sealed record MeResponse(string Email, bool HasProfile);
 public sealed record AuthRequest(string Email, string Password);
 public sealed record RefreshRequest(string RefreshToken);
 public sealed record TokenResponse(string TokenType, string AccessToken, long ExpiresIn, string RefreshToken);
+public sealed record ForgotPasswordRequest(string Email);
+public sealed record ResetPasswordRequest(string Email, string Code, string NewPassword);
 
 // ---------- Web notifications ----------
 

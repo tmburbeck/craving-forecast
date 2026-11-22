@@ -4,7 +4,8 @@
 //   node walkthrough.mjs <base url> <screenshot folder>
 //   node walkthrough.mjs http://127.0.0.1:5080 shots
 import { chromium } from 'playwright';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const [base = 'http://127.0.0.1:5080', out = 'shots'] = process.argv.slice(2);
 const sizes = {
@@ -48,7 +49,9 @@ function watch(page) {
 }
 
 const email = `walkthrough-${Date.now()}@example.com`;
-const password = 'correct horse battery';
+let password = 'correct horse battery';
+// Where the server writes emails instead of sending them (its Email:PickupDirectory). Unset: the reset step is skipped.
+const mailDir = process.env.MAIL_DIR;
 
 try {
   // Headless Chromium reports notifications as blocked unless they're granted up front, and the app
@@ -143,6 +146,18 @@ try {
     }
   });
 
+  await step('Help & FAQ opens from Insights and answers expand', async () => {
+    await page.goto(`${base}/insights`);
+    await page.getByRole('link', { name: 'Help & FAQ' }).last().click();
+    await page.waitForURL('**/help');
+    await page.getByRole('heading', { name: 'Help & FAQ' }).waitFor();
+    const answer = page.getByText('Apple only allows them once Salus is on your Home Screen');
+    if (await answer.isVisible()) throw new Error('answers should start closed');
+    await page.getByText('How do I get notifications on an iPhone or iPad?').click();
+    await answer.waitFor();
+    await page.screenshot({ path: `${out}/help-phone.png`, fullPage: true });
+  });
+
   await step('sign out, and a signed-out visit to Today goes to sign-in', async () => {
     await page.goto(`${base}/insights`);
     await page.getByRole('button', { name: 'Sign out' }).last().click();
@@ -166,6 +181,31 @@ try {
     await page.getByLabel('Password').fill('not the right password');
     await page.getByRole('button', { name: 'Sign in' }).click();
     await page.getByText("That email and password don't match.").waitFor();
+  });
+
+  await step('forgot password: the emailed link sets a new password', async () => {
+    if (!mailDir) { console.log('      (skipped: MAIL_DIR not set)'); return; }
+    await page.getByRole('link', { name: 'Forgot your password?' }).click();
+    await page.waitForURL('**/forgot');
+    await page.getByLabel('Email').fill(email);
+    await page.getByRole('button', { name: 'Send reset link' }).click();
+    await page.getByRole('heading', { name: 'Check your email' }).waitFor();
+
+    let link;
+    for (const f of (await readdir(mailDir)).filter(f => f.endsWith('.json')).sort().reverse()) {
+      const mail = JSON.parse(await readFile(join(mailDir, f), 'utf8'));
+      if (mail.To === email) { link = mail.Text.split('\n').map(s => s.trim()).find(s => s.includes('/reset-password?')); break; }
+    }
+    if (!link) throw new Error('no password-reset email was written');
+    const target = new URL(link); // the link names the real site; open the same page on the site under test
+    await page.goto(`${base}${target.pathname}${target.search}`);
+    await page.getByRole('heading', { name: 'Choose a new password' }).waitFor();
+    password = 'a brand new passphrase';
+    await page.getByLabel('New password').fill(password);
+    await page.getByRole('button', { name: 'Save new password' }).click();
+    await page.getByRole('heading', { name: 'Password changed' }).waitFor();
+    await page.getByRole('link', { name: 'Sign in' }).click();
+    await page.waitForURL('**/signin');
   });
 
   await step('sign back in goes straight to Today', async () => {

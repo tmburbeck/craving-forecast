@@ -37,6 +37,22 @@ public sealed class Api(HttpClient http)
         return await SignInAsync(email, password);
     }
 
+    /// <summary>Always succeeds from the user's point of view: the server never says whether the account exists.</summary>
+    public async Task RequestPasswordResetAsync(string email)
+    {
+        var res = await http.PostAsJsonAsync("api/auth/forgot", new ForgotPasswordRequest(email), Json);
+        if (res.StatusCode == HttpStatusCode.TooManyRequests) throw new HttpRequestException(TooMany);
+        res.EnsureSuccessStatusCode();
+    }
+
+    /// <returns>Null on success, otherwise a message to show.</returns>
+    public async Task<string?> ResetPasswordAsync(string email, string code, string newPassword)
+    {
+        var res = await http.PostAsJsonAsync("api/auth/reset", new ResetPasswordRequest(email, code, newPassword), Json);
+        if (res.StatusCode == HttpStatusCode.TooManyRequests) return TooMany;
+        return res.IsSuccessStatusCode ? null : await ProblemAsync(res) ?? "Couldn't change the password.";
+    }
+
     public async Task SignOutAsync() => await http.PostAsync("api/auth/logout", null);
 
     /// <returns>Null when nobody is signed in.</returns>

@@ -1,0 +1,55 @@
+@page "/forgot"
+@inject Api Api
+
+<PageTitle>Forgot your password · Salus</PageTitle>
+<div class="narrow stack" style="--gap:22px">
+    <Brand />
+    @if (!_sent)
+    {
+        <div class="stack" style="--gap:8px">
+            <h1 class="heading">Forgot your password?</h1>
+            <p class="body">Enter the email you signed up with and Salus will send a link to choose a new one.</p>
+        </div>
+        <form class="stack" style="--gap:18px" @onsubmit="Send" novalidate>
+            <div class="field">
+                <label for="email">Email</label>
+                <input id="email" type="email" autocomplete="email" inputmode="email" @bind="_email" placeholder="you@example.com" required />
+            </div>
+            @if (_error is not null) { <p class="error" role="alert">@_error</p> }
+            <button class="btn btn-primary" type="submit" disabled="@_busy">@(_busy ? "Sending…" : "Send reset link")</button>
+        </form>
+    }
+    else
+    {
+        <div class="stack" style="--gap:8px" role="status">
+            <h1 class="heading">Check your email</h1>
+            <p class="body">If <b>@_email.Trim()</b> has a Salus account, a link to choose a new password is on its way. It works once, for the next hour.</p>
+            <p class="small muted">Nothing after a few minutes? Check your junk or spam folder, or try again.</p>
+        </div>
+        <button class="btn btn-plain" type="button" @onclick="() => _sent = false">Send it again</button>
+    }
+    <a class="btn btn-plain" href="signin">Back to sign in</a>
+</div>
+
+@code {
+    private string _email = "";
+    private string? _error;
+    private bool _busy;
+    private bool _sent;
+
+    private async Task Send()
+    {
+        if (_busy) return;
+        if (!_email.Contains('@')) { _error = "Enter your email address."; return; }
+        _busy = true;
+        _error = null;
+        try
+        {
+            await Api.RequestPasswordResetAsync(_email.Trim());
+            _sent = true;
+        }
+        catch (HttpRequestException e) when (e.Message.StartsWith("Too many")) { _error = e.Message; }
+        catch (Exception) { _error = "Couldn't reach Salus. Check your connection and try again."; }
+        finally { _busy = false; }
+    }
+}

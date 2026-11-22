@@ -18,6 +18,7 @@ public sealed class AccountPage : ContentPage
     private readonly Label _error = UI.Text("", 14, Weight.SemiBold, Theme.DangerText);
     private readonly Button _submit;
     private readonly Button _switch;
+    private readonly Button _forgot;
     private bool _signingIn;
     private bool _busy;
 
@@ -34,6 +35,9 @@ public sealed class AccountPage : ContentPage
         _submit = UI.Primary("", Submit);
         _switch = UI.Plain("", () => { _signingIn = !_signingIn; Update(); });
         _switch.HorizontalOptions = LayoutOptions.Center;
+        // Resetting happens on the web page; the email's link opens there too.
+        _forgot = UI.Plain("Forgot your password?", async () => await Launcher.OpenAsync(new Uri(new Uri(ApiConfig.BaseUrl), "forgot")));
+        _forgot.HorizontalOptions = LayoutOptions.Center;
 
         var brand = new HorizontalStackLayout
         {
@@ -47,7 +51,7 @@ public sealed class AccountPage : ContentPage
             UI.Stack(8, UI.Text("Email", 14, Weight.Bold), Box(_email)),
             UI.Stack(8, UI.Text("Password", 14, Weight.Bold), Box(_password), _passwordHint),
             _error,
-            UI.Stack(8, _submit, _switch));
+            UI.Stack(8, _submit, _forgot, _switch));
         form.Padding = new Thickness(20, 24, 20, 32);
         form.MaximumWidthRequest = 480;
         Content = new ScrollView { Content = form };
@@ -91,6 +95,7 @@ public sealed class AccountPage : ContentPage
         _submit.IsEnabled = !_busy;
         _submit.BackgroundColor = _busy ? Theme.Disabled : Theme.Green;
         _switch.Text = _signingIn ? "New here? Create an account" : "Already have an account? Sign in";
+        _forgot.IsVisible = _signingIn;
         _switch.IsEnabled = !_busy;
     }
 

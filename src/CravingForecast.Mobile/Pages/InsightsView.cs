@@ -32,6 +32,8 @@ public sealed class InsightsView : ContentView
             Section("Today's signals", Signals(f.ContextFactors)),
             Section("Rules and how much I trust them", Rules(f.Rules)),
             UI.Text("Rules below 40% trust are phased out. Your \"Was this accurate?\" answers move these.", 12, Weight.Regular, Theme.Muted),
+            UI.Plain("Help & FAQ", async () => await Launcher.OpenAsync(new Uri(new Uri(ApiConfig.BaseUrl), "help")))
+                .Also(b => b.HorizontalOptions = LayoutOptions.Center),
             UI.Plain("Sign out", SignOut, Theme.Muted).Also(b => b.HorizontalOptions = LayoutOptions.Center));
         page.Padding = new Thickness(20, 16, 20, 28);
         Content = new ScrollView { Content = page };

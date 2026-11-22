@@ -6,7 +6,10 @@ using CravingForecast.Core;
 using CravingForecast.Core.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Json;
+using System.Text;
+using Azure.Communication.Email;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -57,6 +60,21 @@ builder.Services.ConfigureApplicationCookie(o =>
     o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
 });
 
+// Password-reset links work for an hour, and only once (using one changes the account's security stamp).
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(1));
+
+// ---------- Email: Azure Communication Services when configured; a folder for the walk-through; otherwise nothing ----------
+builder.Services.AddSingleton<IEmailSender>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    if (config["Email:ConnectionString"] is { Length: > 0 } connection)
+        return new AzureEmailSender(new EmailClient(connection),
+            config["Email:Sender"] ?? throw new InvalidOperationException("Email:Sender must be set with Email:ConnectionString."));
+    if (config["Email:PickupDirectory"] is { Length: > 0 } folder)
+        return new FolderEmailSender(folder);
+    return ActivatorUtilities.CreateInstance<NotConfiguredEmailSender>(sp);
+});
+
 // Tokens are signed with data-protection keys; keeping them in the database means a restart doesn't sign everyone out.
 builder.Services.AddDataProtection().PersistKeysToDbContext<AppDbContext>().SetApplicationName("Salus");
 
@@ -105,6 +123,54 @@ api.MapGet("/archetypes", () => ArchetypeCatalog.All.Select(a => new { a.Id, a.N
 // /api/auth/register, /login, /refresh and the account-management endpoints.
 var auth = api.MapGroup("/auth");
 auth.MapIdentityApi<AppUser>().RequireRateLimiting("auth");
+
+// ---------- Password reset ----------
+// Identity's own /forgotPassword and /resetPassword only work for confirmed email addresses, and Salus doesn't
+// ask people to confirm theirs, so these two do the same job for any account. Using a reset link proves the
+// person owns the address, so it marks it confirmed.
+
+// Always the same answer, so the page can't be used to find out who has an account.
+auth.MapPost("/forgot", async (ForgotPasswordRequest r, UserManager<AppUser> users, IEmailSender email, IConfiguration config, ILogger<Program> log) =>
+{
+    if (await users.FindByEmailAsync((r.Email ?? "").Trim()) is { Email: { } address } user)
+    {
+        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(await users.GeneratePasswordResetTokenAsync(user)));
+        // The link uses the configured address, never the request's Host header, which an attacker could set to their own site.
+        var site = (config["App:BaseUrl"] ?? "http://localhost:5077").TrimEnd('/');
+        var link = $"{site}/reset-password?email={Uri.EscapeDataString(address)}&code={code}";
+        try { await email.SendAsync(Emails.PasswordReset(address, link)); }
+        catch (Exception e) { log.LogError(e, "Couldn't send a password-reset email"); }
+    }
+    return Results.Ok();
+}).RequireRateLimiting("auth");
+
+auth.MapPost("/reset", async (ResetPasswordRequest r, UserManager<AppUser> users) =>
+{
+    static IResult LinkNoGood() => Results.ValidationProblem(new Dictionary<string, string[]>
+        { ["code"] = ["This reset link has expired or was already used. Ask for a new one."] });
+
+    var user = await users.FindByEmailAsync((r.Email ?? "").Trim());
+    if (user is null) return LinkNoGood();
+    string token;
+    try { token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(r.Code ?? "")); }
+    catch (FormatException) { return LinkNoGood(); }
+
+    var result = await users.ResetPasswordAsync(user, token, r.NewPassword ?? "");
+    if (!result.Succeeded)
+        return result.Errors.Any(e => e.Code == "InvalidToken")
+            ? LinkNoGood()
+            : Results.ValidationProblem(result.Errors.GroupBy(e => e.Code).ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToArray()));
+
+    // A new password also lifts the lock from too many wrong guesses.
+    await users.SetLockoutEndDateAsync(user, null);
+    await users.ResetAccessFailedCountAsync(user);
+    if (!user.EmailConfirmed)
+    {
+        user.EmailConfirmed = true;
+        await users.UpdateAsync(user);
+    }
+    return Results.NoContent();
+}).RequireRateLimiting("auth");
 
 // Ends a web (cookie) session. The apps forget their tokens instead.
 auth.MapPost("/logout", async (SignInManager<AppUser> signIn) =>
