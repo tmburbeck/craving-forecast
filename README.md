@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/tmburbeck/craving-forecast/actions/workflows/ci.yml/badge.svg)](https://github.com/tmburbeck/craving-forecast/actions/workflows/ci.yml)
 
-A satiety and craving pattern predictor, named for the Roman goddess of health and well-being. (The code still uses the `CravingForecast` working name.) Instead of logging food, users rate their hunger or craving (1–10) and tag the context. The app learns their personal "danger zones" and sends a nudge 30 minutes before each one, matched to the trigger: a high-volume, high-protein snack or a quick distraction.
+A satiety and craving pattern predictor, named for the Roman goddess of health and well-being. (The code still uses the `CravingForecast` working name.) Instead of logging food, users rate their hunger or craving (1–10) and tag the context. The app learns their personal "danger zones" and sends a nudge 30 minutes before each one, matched to the trigger: a high-volume, high-protein snack or a quick distraction. It checks in halfway through longer zones and asks "Was this accurate?" afterwards, and those answers are what personalize the forecast.
 
-**Use it:** https://salus-tmburbeck-bafcfcg0exfpduh6.westus3-01.azurewebsites.net works on phones, iPads and computers. On an iPhone, open it in Safari and choose **Share → Add to Home Screen** to use it like an app.
+**Use it:** https://salus-tmburbeck-bafcfcg0exfpduh6.westus3-01.azurewebsites.net works on phones, iPads and computers. On an iPhone, open it in Safari and choose **Share → Add to Home Screen** to use it like an app. It has a [Help & FAQ](https://salus-tmburbeck-bafcfcg0exfpduh6.westus3-01.azurewebsites.net/help) and a [privacy policy](https://salus-tmburbeck-bafcfcg0exfpduh6.westus3-01.azurewebsites.net/privacy).
 
 ## Screens
 
@@ -80,21 +80,32 @@ Everything under `/api/me` needs a signed-in user (the apps send `Authorization:
 | GET | `/api/me/feedback/pending` | Today's finished zones not yet rated |
 | POST | `/api/me/feedback` | `Accurate`, `Missed`, or `DifferentTime` + `actualHour` |
 | GET | `/api/me/nudges?days=2` | Upcoming nudges for the phone to schedule |
+| GET | `/api/push/public-key` | VAPID public key for Web Push |
+| POST | `/api/me/push/subscriptions` | Save this browser's push subscription |
+| POST | `/api/me/push/unsubscribe` | Stop notifications on this browser |
+| POST | `/api/me/push/test` | Send a test notification to every device |
+| POST | `/api/me/delete` | Delete the account and all its data (password required) |
+| POST | `/api/contact` | Contact form: forwards a message to the owner's inbox |
 
 ## Design notes
 
-- **Nudges reach the web app as Web Push notifications.** The API keeps each device's subscription and, once a minute, pushes nudges that are due (catching up on any missed in the last 20 minutes, each sent once). It uses the current standard (RFC 8291 `aes128gcm`, RFC 8292 VAPID), which Apple requires; on iPhone and iPad, notifications work once Salus is added to the Home Screen (iOS 16.4+). The VAPID keys are made on first use and stored in the database. On Azure's free plan the app visits its own address every 10 minutes (`Push:KeepAwakeUrl`) so it doesn't sleep through a nudge; a paid plan with Always On makes that unnecessary.
+- **Three notifications per danger zone, at most:** a heads-up 30 minutes before, a check-in halfway through zones of 2+ hours (skipped if the person already checked in), and "Was this accurate?" 15 minutes after (skipped once answered). Nothing but the heads-up after 11 PM.
+- **They reach the web app as Web Push notifications.** The API keeps each device's subscription and, once a minute, pushes whatever is due (catching up on any missed in the last 20 minutes, each sent once). It uses the current standard (RFC 8291 `aes128gcm`, RFC 8292 VAPID), which Apple requires; on iPhone and iPad, notifications work once Salus is added to the Home Screen (iOS 16.4+). The VAPID keys are made on first use and stored in the database. On Azure's free plan the app visits its own address every 10 minutes (`Push:KeepAwakeUrl`) so it doesn't sleep through a nudge; a paid plan with Always On makes that unnecessary.
 - **In the MAUI app, nudges are local notifications** scheduled on the device from `/nudges`, so they fire when the app is closed and no APNs or FCM server is needed. The app reschedules after each sync, check-in or feedback answer. iOS allows 64 pending notifications per app, which is plenty for 2 days.
 - **Health data stays coarse.** The phone sends only `Poor / Ok / Good` and `Low / Normal / High`, never raw sleep or step counts. Calendar event details never leave the device; only a back-to-back yes/no is sent.
 - **Health Connect (Android)** is stubbed. Android users get the morning sleep tap instead. See `HealthConnectSignals.cs` for wiring it up.
 - **Accounts** use ASP.NET Core Identity: passwords of 10+ characters, lockout after 5 failed attempts, and 10 sign-in requests a minute per address. Token keys are kept in the database, so a restart doesn't sign anyone out.
 - **Password reset** (`/api/auth/forgot`, `/api/auth/reset`) emails a link that works once, for an hour, and also clears a lockout. The answer never reveals whether an account exists, and the link always uses `App:BaseUrl`, never the request's Host header. Email goes through Azure Communication Services when `Email:ConnectionString` and `Email:Sender` are set as app settings; with `Email:PickupDirectory` it's written to a folder instead (the walk-through reads it from there); with neither, nothing is sent.
+- **Deleting an account** (`/api/me/delete`) asks for the password again, then erases the account, its forecast state and its push subscriptions. Every `/api/me` request checks the account still exists, so tokens held by other devices stop working at once.
+- **The contact form** (`/api/contact`) emails each message to `Contact:ForwardTo`, a private app setting, with Reply-To set to the writer, so no address appears on the site. It allows 3 messages an hour per address, has a hidden field that catches bots, and refuses header-injection attempts.
 - **Storage** is one SQLite file (`ConnectionStrings:Salus`, default `salus.db`) holding accounts and each user's forecast state as JSON. Schema changes go through EF Core migrations, applied at startup. Moving to Postgres means swapping the EF provider.
 
 ## Next steps
 
 - [x] EF Core persistence + accounts
 - [x] Hosting (Azure App Service, free tier) with HTTPS, deployed from CI on every push to `main`
+- [x] Password reset by email, account deletion, Help & FAQ, privacy policy and contact form
+- [ ] Before any store release: the name "Salus" is crowded in health apps and trademarks, so the store listing would need a more distinctive name. The app ID is already `com.tmburbeck.salus`.
 - [ ] Health Connect implementation
 - [ ] Weekday vs weekend personal patterns (personal estimates are currently by hour of day only)
 - [ ] Tune context factors per user the same way rule trust is tuned

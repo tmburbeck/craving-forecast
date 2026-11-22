@@ -17,7 +17,8 @@
     <Nullable>enable</Nullable>
 
     <ApplicationTitle>Salus</ApplicationTitle>
-    <ApplicationId>com.tmburbeck.cravingforecast</ApplicationId>
+    <!-- The store identity: permanent once an app is published, so it names the product, not the old working title. -->
+    <ApplicationId>com.tmburbeck.salus</ApplicationId>
     <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
 
