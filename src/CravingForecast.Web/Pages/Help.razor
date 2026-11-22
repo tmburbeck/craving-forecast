@@ -1,0 +1,90 @@
+@page "/help"
+
+<PageTitle>Help & FAQ · Salus</PageTitle>
+<div class="narrow stack faq" style="--gap:24px">
+    <div class="row between">
+        <Brand />
+        <a class="btn btn-plain" href="">Back to Salus</a>
+    </div>
+    <div class="stack" style="--gap:8px">
+        <h1 class="heading">Help & FAQ</h1>
+        <p class="body">Quick answers about how Salus works. Tap a question to open it.</p>
+    </div>
+
+    @foreach (var (group, items) in Sections)
+    {
+        <section class="stack" style="--gap:4px" aria-label="@group">
+            <h2 class="caps">@group</h2>
+            <div class="card" style="padding:4px 16px">
+                @foreach (var (q, a) in items)
+                {
+                    <details>
+                        <summary><span>@q</span><span class="chev" aria-hidden="true"><Icon Name="back" Size="16" Stroke="2.2" /></span></summary>
+                        <div class="answer">@((MarkupString)a)</div>
+                    </details>
+                }
+            </div>
+        </section>
+    }
+
+    <p class="small muted center">Still stuck? Sign out and back in from Insights, or ask for a password reset from the sign-in screen.</p>
+</div>
+
+@code {
+    // Answers describe what the app does today. Keep the numbers in step with the code:
+    // ZoneDetector.Threshold (55%), NudgePlanner.LeadTime (30 min), reset links (1 hour), lockout (5 tries, 15 min).
+    private static readonly (string Section, (string Q, string A)[] Items)[] Sections =
+    [
+        ("Getting started",
+        [
+            ("What does Salus do?",
+             "<p>Instead of logging food, you tell Salus how hungry or tempted you feel now and then. It learns the hours when cravings tend to hit you, your <b>danger zones</b>, and gives you a heads-up before each one with an idea that fits.</p>"),
+            ("What is a danger zone?",
+             "<p>A stretch of the day when your craving risk is high: 55% or more. On <b>Today</b> they're the dark walnut bars in the chart and they're listed under <b>Danger zones today</b>. Calm (sage) and Watch (honey) hours are lower risk.</p>"),
+            ("How can Salus predict anything on day one?",
+             "<p>The quiz matches you to one or more craving patterns, such as the <i>Afternoon Slumper</i>, and Salus starts from those. As you check in, your own data takes over: about half of the forecast by day 7 and all of it by day 14. <b>Insights</b> shows how personal today's forecast is.</p>"),
+            ("Do I need to log what I eat?",
+             "<p>No. Salus never asks what you ate. It only asks how strong the pull is, from 1 to 10, and optionally what's going on.</p>")
+        ]),
+        ("Daily use",
+        [
+            ("How do I check in?",
+             "<p>Tap <b>+</b> (or <b>Check in</b> on a computer), pick a number from 1 to 10 and, if you like, tag what's going on. It takes a few seconds. Check in whenever you notice hunger or a craving, especially around your danger zones. The more you check in, the faster the forecast becomes yours.</p>"),
+            ("What does \"Was this accurate?\" do?",
+             "<p>After a danger zone has passed, Today asks whether it was right. <b>Yes, it hit</b> and <b>I was fine</b> tell Salus which predictions to trust; <b>Different time</b> moves the zone. A miss teaches it more than a regular check-in, so even a quick \"I was fine\" helps. You can see each rule's trust in <b>Insights</b>.</p>"),
+            ("Why does it ask how I slept?",
+             "<p>A poor night's sleep raises craving risk across the whole next day, so one tap each morning makes the forecast more accurate. Only <i>well</i>, <i>okay</i> or <i>poorly</i> is saved.</p>"),
+            ("Why did my danger zones change?",
+             "<p>That's Salus learning. Your check-ins, your sleep answer and your \"Was this accurate?\" answers all move the forecast, and Friday evenings and Sunday afternoons have their own patterns.</p>")
+        ]),
+        ("Notifications",
+        [
+            ("When will Salus notify me?",
+             "<p>Once, <b>30 minutes before each danger zone</b>, with a short message and one idea: a filling snack or a quick distraction, depending on your quiz answers. Tapping it opens Today. Salus doesn't send anything else.</p>"),
+            ("How do I turn notifications on?",
+             "<p>Tap <b>Turn on notifications</b> on Today, or go to <b>Insights → Notifications</b>. Allow notifications when your phone or browser asks, then tap <b>Send a test</b> to check one arrives.</p>"),
+            ("How do I get notifications on an iPhone or iPad?",
+             "<p>Apple only allows them once Salus is on your Home Screen (iOS 16.4 or newer):</p><ol><li>Open Salus in <b>Safari</b>.</li><li>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</li><li>Open Salus from the new icon and sign in. The Home Screen app keeps its own sign-in, separate from Safari.</li><li>Turn notifications on as above.</li></ol>"),
+            ("I'm not getting notifications.",
+             "<p>Check <b>Insights → Notifications</b>: it says whether they're on for this device. Then check your phone's settings (on iPhone, <b>Settings → Notifications → Salus</b>) and that a Focus mode isn't hiding them. <b>Send a test</b> shows whether delivery works. Notifications are set per device, so turn them on on each one you use.</p>")
+        ]),
+        ("Your account",
+        [
+            ("I forgot my password.",
+             "<p>On the sign-in screen, tap <b>Forgot your password?</b> and enter your email. Salus sends a link that works once, for an hour. If it doesn't arrive within a few minutes, check your junk or spam folder.</p>"),
+            ("It says my account is locked.",
+             "<p>After 5 wrong passwords in a row, Salus locks the account for 15 minutes to keep it safe. Wait and try again, or reset your password, which unlocks it straight away.</p>"),
+            ("Can I use Salus on more than one device?",
+             "<p>Yes. Sign in with the same account on your phone, iPad, computer or the Windows app and you'll see the same forecast everywhere. Notifications are turned on separately on each device.</p>"),
+            ("What does Salus keep about me?",
+             "<p>Your email, your quiz answers, your check-ins (the number and any tags), your sleep answer (well, okay or poorly) and your \"Was this accurate?\" answers. The web app doesn't read any health or calendar data. The Windows app can check your calendar for back-to-back meetings, but only a yes or no leaves your device, never the events.</p>"),
+            ("Can I delete my account?",
+             "<p>Not from the app yet. It's on the way.</p>")
+        ]),
+        ("Health and safety",
+        [
+            ("Is Salus medical advice?",
+             "<p>No. Salus describes general patterns in hunger and cravings to help you plan ahead. It isn't a diagnosis or treatment. If eating feels out of your control or is causing you distress, please talk to a doctor or another qualified professional.</p>")
+        ])
+    ];
+}

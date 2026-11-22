@@ -171,3 +171,15 @@ a { color: var(--green-text); }
 #blazor-error-ui { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; padding: 12px 20px; background: var(--wood); color: var(--ink); box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12); }
 #blazor-error-ui .dismiss { cursor: pointer; float: right; }
 .bottom-nav[hidden] { display: none; }
+
+/* ---------- Help & FAQ: questions that open in place ---------- */
+.faq details { border-bottom: 1px solid var(--border); }
+.faq details:last-child { border-bottom: 0; }
+.faq summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 12px 0; font-weight: 600; cursor: pointer; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary .chev { color: var(--muted); transform: rotate(-90deg); transition: transform 0.15s; flex: none; display: flex; }
+.faq details[open] summary .chev { transform: rotate(90deg); }
+.faq .answer { padding: 0 0 14px; color: var(--body); font-size: 14px; }
+.faq .answer p + p, .faq .answer p + ol { margin-top: 8px; }
+.faq .answer ol { margin: 8px 0 0; padding-left: 20px; }
+.faq .answer li + li { margin-top: 4px; }

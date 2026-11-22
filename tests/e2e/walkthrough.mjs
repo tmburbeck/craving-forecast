@@ -146,6 +146,18 @@ try {
     }
   });
 
+  await step('Help & FAQ opens from Insights and answers expand', async () => {
+    await page.goto(`${base}/insights`);
+    await page.getByRole('link', { name: 'Help & FAQ' }).last().click();
+    await page.waitForURL('**/help');
+    await page.getByRole('heading', { name: 'Help & FAQ' }).waitFor();
+    const answer = page.getByText('Apple only allows them once Salus is on your Home Screen');
+    if (await answer.isVisible()) throw new Error('answers should start closed');
+    await page.getByText('How do I get notifications on an iPhone or iPad?').click();
+    await answer.waitFor();
+    await page.screenshot({ path: `${out}/help-phone.png`, fullPage: true });
+  });
+
   await step('sign out, and a signed-out visit to Today goes to sign-in', async () => {
     await page.goto(`${base}/insights`);
     await page.getByRole('button', { name: 'Sign out' }).last().click();
