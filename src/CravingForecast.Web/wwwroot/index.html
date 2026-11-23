@@ -29,20 +29,22 @@
 </head>
 
 <body>
-    <div id="app">
-        <!-- The splash shows while the app downloads; the app replaces it when it starts. -->
-        <div class="splash" role="status" aria-label="Loading Salus">
-            <div class="logo">
-                <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#F4EDE2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V11 M12 11C12 7 9 4 4 4c0 4 3 7 8 7z M12 14c0-3 2.5-6 7-6 0 3.5-2.5 6-7 6z" /></svg>
-            </div>
-            <div class="words">
-                <span class="greeting" id="greeting">Welcome</span>
-                <span class="name">Salus</span>
-                <span class="body">Know your cravings before they arrive.</span>
-            </div>
-            <div class="loader" aria-hidden="true"></div>
+    <!-- The intro: shown on top of the app while it downloads and starts, and kept on screen for at least a
+         few seconds when someone opens Salus, so it greets them instead of flashing past. -->
+    <div id="intro" class="splash intro" role="status" aria-label="Welcome to Salus">
+        <div class="logo">
+            <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#F4EDE2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V11 M12 11C12 7 9 4 4 4c0 4 3 7 8 7z M12 14c0-3 2.5-6 7-6 0 3.5-2.5 6-7 6z" /></svg>
         </div>
+        <div class="words">
+            <span class="greeting" id="greeting">Welcome</span>
+            <span class="name">Salus</span>
+            <span class="body">Know your cravings before they arrive.</span>
+        </div>
+        <p class="intro-line">Salus learns when your cravings tend to hit and gives you a heads-up before each one.</p>
+        <div class="loader" aria-hidden="true"></div>
     </div>
+
+    <div id="app"></div>
 
     <div id="blazor-error-ui" role="alert">
         Something went wrong. <a href="" class="reload">Reload</a>
@@ -54,6 +56,25 @@
             var h = new Date().getHours();
             document.getElementById("greeting").textContent =
                 h < 5 ? "Hello, night owl" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+
+            // Opening Salus (the Home Screen icon starts at "/") shows the intro for at least this long. A link
+            // straight to a screen, like a notification opening the check-in, skips the wait.
+            var minimumMs = location.pathname === "/" ? 3500 : 0;
+            var intro = document.getElementById("intro"), app = document.getElementById("app");
+            function appHasDrawn() { return app.childElementCount > 0; }
+            function leave() {
+                var wait = Math.max(0, minimumMs - performance.now());
+                setTimeout(function () {
+                    intro.classList.add("leaving");
+                    setTimeout(function () { intro.remove(); }, 600);
+                }, wait);
+            }
+            if (appHasDrawn()) leave();
+            else new MutationObserver(function (_, watcher) {
+                if (!appHasDrawn()) return;
+                watcher.disconnect();
+                leave();
+            }).observe(app, { childList: true });
         })();
     </script>
     <script>

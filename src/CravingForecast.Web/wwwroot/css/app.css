@@ -166,7 +166,11 @@ a { color: var(--green-text); }
 @keyframes pop { from { opacity: 0; transform: scale(0.86); } to { opacity: 1; transform: none; } }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @keyframes sweep { from { left: -60px; } to { left: 160px; } }
-@media (prefers-reduced-motion: reduce) { .splash .logo, .splash .words, .splash .loader::after { animation: none; } }
+/* The intro sits above the app until it's had its moment, then fades away. */
+.splash.intro { z-index: 900; transition: opacity 0.5s ease; }
+.splash.intro.leaving { opacity: 0; pointer-events: none; }
+.splash .intro-line { max-width: 300px; margin: 0; text-wrap: balance; color: var(--body); font-size: 15px; line-height: 1.5; animation: rise 0.6s 1.1s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .splash .logo, .splash .words, .splash .intro-line, .splash .loader::after { animation: none; } .splash.intro { transition: none; } }
 
 #blazor-error-ui { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; padding: 12px 20px; background: var(--wood); color: var(--ink); box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.12); }
 #blazor-error-ui .dismiss { cursor: pointer; float: right; }

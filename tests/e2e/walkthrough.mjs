@@ -40,6 +40,9 @@ async function step(name, fn) {
   }
 }
 
+/** The intro fades out on top of the app; wait for it before a screenshot. */
+const introGone = p => p.locator('#intro').waitFor({ state: 'detached', timeout: 15000 });
+
 function watch(page) {
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => {
@@ -63,9 +66,13 @@ try {
   await page.clock.setFixedTime(clock);
   watch(page);
 
-  await step('first visit shows the welcome slides', async () => {
+  await step('opening Salus shows the intro for a few seconds, then the welcome slides', async () => {
     await page.goto(`${base}/`);
     await page.waitForURL('**/welcome');
+    // The app is ready well before this, but the intro stays to greet the person.
+    await page.waitForTimeout(2500);
+    if (await page.locator('#intro:not(.leaving)').count() !== 1) throw new Error('the intro left before it had its moment');
+    await introGone(page);
     await page.getByRole('heading', { name: 'Know your cravings before they arrive' }).waitFor();
     await page.screenshot({ path: `${out}/welcome-phone.png` });
   });
@@ -150,6 +157,7 @@ try {
       watch(p);
       for (const route of ['today', 'insights']) {
         await p.goto(`${base}/${route}`);
+        await introGone(p);
         await p.getByRole('heading', { level: 1 }).waitFor();
         await p.screenshot({ path: `${out}/${route}-${size}.png` });
       }
