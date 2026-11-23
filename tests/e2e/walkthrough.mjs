@@ -69,10 +69,11 @@ try {
   await step('opening Salus shows the intro for a few seconds, then the welcome slides', async () => {
     await page.goto(`${base}/`);
     await page.waitForURL('**/welcome');
-    // The app is ready well before this, but the intro stays to greet the person.
-    await page.waitForTimeout(2500);
-    if (await page.locator('#intro:not(.leaving)').count() !== 1) throw new Error('the intro left before it had its moment');
+    // The app is usually ready in about a second, but the intro stays to greet the person. The page records
+    // when the intro left, measured from when it opened, so this holds however slow the machine is.
     await introGone(page);
+    const leftAt = Number(await page.evaluate(() => document.documentElement.dataset.introLeftAt));
+    if (!(leftAt >= 3400)) throw new Error(`the intro left after ${leftAt} ms; it should stay at least 3.5 seconds`);
     await page.getByRole('heading', { name: 'Know your cravings before they arrive' }).waitFor();
     await page.screenshot({ path: `${out}/welcome-phone.png` });
   });
