@@ -65,6 +65,8 @@
             function leave() {
                 var wait = Math.max(0, minimumMs - performance.now());
                 setTimeout(function () {
+                    // When it left, in ms since the page opened; the browser walk-through checks this.
+                    document.documentElement.dataset.introLeftAt = Math.round(performance.now());
                     intro.classList.add("leaving");
                     setTimeout(function () { intro.remove(); }, 600);
                 }, wait);
